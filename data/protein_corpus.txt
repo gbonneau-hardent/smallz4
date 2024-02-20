@@ -1,0 +1,4 @@
+.\data\protein_corpus\hi
+.\data\protein_corpus\hs
+.\data\protein_corpus\mj
+.\data\protein_corpus\sc

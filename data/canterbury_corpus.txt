@@ -1,0 +1,11 @@
+.\data\canterbury\alice29.txt
+.\data\canterbury\asyoulik.txt
+.\data\canterbury\cp.html
+.\data\canterbury\fields.c
+.\data\canterbury\grammar.lsp
+.\data\canterbury\kennedy.xls
+.\data\canterbury\lcet10.txt
+.\data\canterbury\plrabn12.txt
+.\data\canterbury\ptt5
+.\data\canterbury\sum
+.\data\canterbury\xargs.1

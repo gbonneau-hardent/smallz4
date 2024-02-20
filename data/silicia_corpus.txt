@@ -1,0 +1,12 @@
+.\data\silicia_corpus\nci
+.\data\silicia_corpus\dickens
+.\data\silicia_corpus\mozilla
+.\data\silicia_corpus\mr
+.\data\silicia_corpus\ooffice
+.\data\silicia_corpus\osdb
+.\data\silicia_corpus\reymont
+.\data\silicia_corpus\samba
+.\data\silicia_corpus\sao
+.\data\silicia_corpus\webster
+.\data\silicia_corpus\x-ray
+.\data\silicia_corpus\xml
