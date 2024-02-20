@@ -1,0 +1,30 @@
+ Volume in drive C has no label.
+ Volume Serial Number is E0E8-B74C
+
+ Directory of C:\Users\gbonneau\git\zlib\data\lukas_corpus\lukas_2d_8_tif
+
+07/11/2023  09:14 AM    <DIR>          .
+07/07/2023  11:31 AM    <DIR>          ..
+07/11/2023  09:14 AM                 0 lukas_2d_16.txt
+07/07/2023  02:18 PM         3,752,938 lukas_2d_8_breast_0_t.tif
+07/07/2023  02:19 PM         3,678,612 lukas_2d_8_breast_1_t.tif
+07/07/2023  02:19 PM         3,125,062 lukas_2d_8_foot_0_t.tif
+07/07/2023  02:19 PM         2,235,408 lukas_2d_8_foot_1_t.tif
+07/07/2023  02:20 PM         2,500,096 lukas_2d_8_hand_0_t.tif
+07/07/2023  02:20 PM         2,535,246 lukas_2d_8_hand_1_t.tif
+07/07/2023  02:20 PM         2,656,678 lukas_2d_8_head_0_t.tif
+07/07/2023  02:20 PM         2,608,068 lukas_2d_8_head_1_t.tif
+07/07/2023  02:21 PM         2,701,240 lukas_2d_8_knee_0_t.tif
+07/07/2023  02:21 PM         2,655,704 lukas_2d_8_knee_1_t.tif
+07/07/2023  02:22 PM         1,728,972 lukas_2d_8_leg_0_t.tif
+07/07/2023  02:22 PM         1,318,720 lukas_2d_8_leg_1_t.tif
+07/07/2023  02:22 PM         3,124,892 lukas_2d_8_pelvis_0_t.tif
+07/07/2023  02:22 PM         3,034,932 lukas_2d_8_pelvis_1_t.tif
+07/07/2023  02:22 PM         2,424,218 lukas_2d_8_sinus_0_t.tif
+07/07/2023  02:22 PM         2,241,804 lukas_2d_8_sinus_1_t.tif
+07/07/2023  02:23 PM         1,759,608 lukas_2d_8_spine_0_t.tif
+07/07/2023  02:23 PM         1,786,082 lukas_2d_8_spine_1_t.tif
+07/07/2023  02:23 PM         3,537,852 lukas_2d_8_thorax_0_t.tif
+07/07/2023  02:24 PM         2,854,408 lukas_2d_8_thorax_1_t.tif
+              21 File(s)     52,260,540 bytes
+               2 Dir(s)  332,107,075,584 bytes free
