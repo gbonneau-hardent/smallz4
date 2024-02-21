@@ -568,8 +568,9 @@ void sendBytesToOut(const void* data, size_t numBytes, void* userPtr)
    }
 }
 
+constexpr uint32_t lz4MaxExpand = 16;
 
-int main(int argc, const char* argv[])
+int32_t main(int argc, const char* argv[])
 {
    std::unique_ptr<cxxopts::Options> allocated(new cxxopts::Options(argv[0], "Simulation application to compute the minimum number of trials window n needed to reach the minimum observations o having probability p\n\nExample command line arguments: -p .00025844 -o 4 -t 0.95 -c .00000002166\n"));
    auto& options = *allocated;
@@ -764,17 +765,17 @@ int main(int argc, const char* argv[])
          exit(-4);
       }
 
-      statFile << " # Source File Name = " << srcStatName << std::endl << std::endl;
-      statFile << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
-      statFileDist << "# Source File Name = " << srcStatName << std::endl << std::endl;
-      statFileDist << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
-      statFileLength << "# Source File Name = " << srcStatName << std::endl << std::endl;
-      statFileLength << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
-      statFileDistLength << "# Source File Name = " << srcStatName << std::endl << std::endl;
-      statFileDistLength << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
-      statFileNewL4 << "# Source File Name = " << srcStatName << std::endl << std::endl;
-      statFileNewL4 << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
-      dumpFileNewL4 << "# Source File Name = " << srcStatName << std::endl << std::endl;
+      statFile << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
+      statFile << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << "#" << std::endl;
+      statFileDist << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
+      statFileDist << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << "#" << std::endl;
+      statFileLength << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
+      statFileLength << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << "#" << std::endl;
+      statFileDistLength << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
+      statFileDistLength << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << "#" << std::endl;
+      statFileNewL4 << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
+      statFileNewL4 << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << "#" << std::endl;
+      dumpFileNewL4 << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
       dumpFileNewL4 << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
 
       for (uint32_t i = 0; i < (chunkSize[chunckIndex] + 64); i++) {
@@ -822,10 +823,10 @@ int main(int argc, const char* argv[])
 
          ratioStat[fileName] = 0;
          statFileNewL4 << "# File Compressed : " << fileName << std::endl;
-         statFileNewL4 << "# Statistic of compression loss with modified algorithm " << fileName << std::endl << std::endl;
+         statFileNewL4 << "# Statistic of compression loss with modified algorithm " << fileName << std::endl << "#" << std::endl;
 
          dumpFileNewL4 << "# File Compressed : " << fileName << std::endl;
-         dumpFileNewL4 << "# Statistic of compression loss with modified algorithm " << fileName << std::endl << std::endl;
+         dumpFileNewL4 << "# Statistic of compression loss with modified algorithm " << fileName << std::endl << "#" << std::endl;
 
          std::shared_ptr<std::map<uint32_t, uint32_t>> compLossStatistic = std::shared_ptr<std::map<uint32_t, uint32_t>>(new std::map<uint32_t, uint32_t>);
          std::shared_ptr<std::list<std::pair<uint32_t, uint32_t>>> compLossCloud = std::shared_ptr<std::list<std::pair<uint32_t, uint32_t>>>(new std::list<std::pair<uint32_t, uint32_t>>);
@@ -906,7 +907,7 @@ int main(int argc, const char* argv[])
             lz4Reader.dataCompressSize = 0;
             lz4Reader.dataReadSize = 0;  
          }
-         statFileNewL4 << "# Number of entried for this statistic = " << (*compLossCloud).size() << std::endl << std::endl;
+         statFileNewL4 << "# Number of entried for this statistic = " << (*compLossCloud).size() << std::endl << "#" << std::endl;
          for (auto percLoss : (*compLossCloud)) {
             statFileNewL4 << "LZ4 ratio x 100," << percLoss.first << ", New LZ4 ratio x 100," << percLoss.second << std::endl;
          }
@@ -921,7 +922,7 @@ int main(int argc, const char* argv[])
       uint64_t distChunk = 0;
       uint64_t totDistChunk = 0;
 
-      statFileDist << "# Distance in byte" << "," << "Number of matches" << "," << "Total % of matches" << std::endl << std::endl;
+      statFileDist << "# Distance in byte" << "," << "Number of matches" << "," << "Total % of matches" << std::endl << "#" << std::endl;
 
       for (auto iterDist = mapDist.begin(); iterDist != mapDist.end(); ) {
 
@@ -956,7 +957,7 @@ int main(int argc, const char* argv[])
          numLength += iterLength->second;
       }
 
-      statFileLength << "# Length in byte" << "," << "Number of length" << "," << "Total % of Length" << std::endl << std::endl;
+      statFileLength << "# Length in byte" << "," << "Number of length" << "," << "Total % of Length" << std::endl << "#" << std::endl;
 
       for (auto iterLength = mapLength.begin(); iterLength != mapLength.end(); ) {
 
@@ -1052,11 +1053,11 @@ int main(int argc, const char* argv[])
          iterMean++;
       }
 
-      for (uint32_t i = 1; i < (chunkSize[chunkSize.size()-1] + 64); i++) {
+      for (uint32_t i = 1; i < (chunkSize[chunkSize.size()-1] + lz4MaxExpand); i++) {
          std::stringstream ss;
          ss << i;
          for (int32_t chunckIndex = chunkSize.size()-1; 0 <= chunckIndex; --chunckIndex) {
-            if ((chunkSize[chunckIndex] + 64) > i) {
+            if ((chunkSize[chunckIndex] + lz4MaxExpand) > i) {
                if (chunkAllCompStat[chunckIndex] != nullptr) {
                   ss << "," << (*chunkAllCompStat[chunckIndex])[i];
                }
@@ -1071,12 +1072,12 @@ int main(int argc, const char* argv[])
       std::cout << "Compression ratio with threshold (" << threshold << ") = " << (double)lz4Reader.totalSizeReadStat / (double)lz4Reader.totalSizeCompressStat << std::endl;
       std::cout << "Compression ratio global (all chunk) = " << (double)lz4Reader.totalSizeRead / (double)lz4Reader.totalSizeCompress << std::endl << std::endl;
 
-      statFile << std::fixed << std::setprecision(1) << std::endl;
+      statFile << std::fixed << std::setprecision(1) << "#" << std::endl;
       statFile << "# Total chunks (size = " << chunkSize[chunckIndex] << ") processed = " << lz4Reader.totalChunkCount << " chunks compressed = " << lz4Reader.totalChunkCompress << " (" << (lz4Reader.totalChunkCompress * 100.0) / lz4Reader.totalChunkCount << ")" << std::endl;
       statFile << std::fixed << std::setprecision(2);
 
-      statFile << std::endl << "# Compression ratio with threshold (" << threshold << ") = " << (double)lz4Reader.totalSizeReadStat / (double)lz4Reader.totalSizeCompressStat << std::endl;
-      statFile << "# Compression ratio global (all chunk) = " << (double)lz4Reader.totalSizeRead / (double)lz4Reader.totalSizeCompress << std::endl << std::endl;
+      statFile << "#" << std::endl << "# Compression ratio with threshold (" << threshold << ") = " << (double)lz4Reader.totalSizeReadStat / (double)lz4Reader.totalSizeCompressStat << std::endl;
+      statFile << "# Compression ratio global (all chunk) = " << (double)lz4Reader.totalSizeRead / (double)lz4Reader.totalSizeCompress << std::endl << "#";
 
       statFile.close();
       statFileDist.close();
@@ -1087,7 +1088,7 @@ int main(int argc, const char* argv[])
    }
 
 
-   //for (uint32_t i = 1; i < (dataChunk[chunckIndex] + 64); i++) {
+   //for (uint32_t i = 1; i < (dataChunk[chunckIndex] + lz4MaxExpand); i++) {
    //   //if ((*allCompStatistic)[i] != 0) {
    //   std::cout << "compression size = " << i << ", static count = " << (*allCompStatistic)[i] << std::endl;
    //   statFile << std::fixed << std::setprecision(2) << i << "," << ((double)dataChunk[chunckIndex] / (double)i) << "," << (*allCompStatistic)[i] << std::endl;
