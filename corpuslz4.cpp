@@ -584,11 +584,11 @@ int32_t main(int argc, const char* argv[])
       ("s,set",       "Set of file that define the corpus for compression",                 cxxopts::value<std::string>()->default_value(".\\data\\silicia_corpus.txt"))
       ("b,bias",      "Bias threshold that define the uncompressibility of a chunk",        cxxopts::value<double>()->default_value("0.9"))
       ("m,match",     "Algorithm that must be used for searching the matching tokens",      cxxopts::value<uint32_t>()->default_value("0"))
-      ("r,r64",       "Compression size to be rounded to closest 64 bytes",                 cxxopts::value<bool>()->default_value("false"))
+      ("r,round",     "Compression size to be rounded to closest 64 bytes",                 cxxopts::value<bool>()->default_value("false"))
       ("x,max_chunk", "Maximum number of chunk that must be compressed per file in corpus", cxxopts::value<uint64_t>()->default_value("0"))
       ("o,offset",    "Create histogram of search match offset",                            cxxopts::value<bool>()->default_value("false"))
       ("l,length",    "Create histogram of search match length",                            cxxopts::value<bool>()->default_value("false"))
-      ("h,histogram", "Create histogram of compression chunk size",                         cxxopts::value<bool>()->default_value("true"))
+      ("h,histogram", "Create histogram of compression chunk size",                         cxxopts::value<bool>()->default_value("false"))
       ;
 
    uint32_t windowSize      = 65535;
@@ -778,6 +778,8 @@ int32_t main(int argc, const char* argv[])
       statFileNewL4 << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << "#" << std::endl;
       dumpFileNewL4 << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
       dumpFileNewL4 << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
+
+      std::cout << isRounding << std::endl;
 
       uint32_t maxCompSize = chunkSize[chunckIndex] + lz4MaxExpand;
       maxCompSize = isRounding ? (((maxCompSize + 63) >> 6) << 6) : maxCompSize;
