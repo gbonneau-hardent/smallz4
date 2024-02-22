@@ -537,7 +537,6 @@ size_t getBytesFromIn(void* data, size_t numBytes, void* userPtr)
          exit(-4);
       }
       lz4Reader->dataReadSize += numToTread;
-      lz4Reader->totalSizeRead += numToTread;
       lz4Reader->totalMBytes = lz4Reader->totalSizeRead >> 20;
       if (lz4Reader->lastMBytes != lz4Reader->totalMBytes) {
          lz4Reader->lastMBytes = lz4Reader->totalMBytes;
@@ -562,7 +561,6 @@ void sendBytesToOut(const void* data, size_t numBytes, void* userPtr)
             std::cerr << "Compression buffer overflow" << std::endl;
             exit(-6);
          }
-         lz4Reader->totalSizeCompress++;
          lz4Reader->compBuffer.get()[lz4Reader->dataCompressSize++] = *compData++;
       }
    }
@@ -584,8 +582,9 @@ int32_t main(int argc, const char* argv[])
       ("w,window",    "Window matching search size",                                        cxxopts::value<uint32_t>()->default_value("65535"))
       ("d,data",      "Data compression size",                                              cxxopts::value<uint32_t>()->default_value("0"))
       ("s,set",       "Set of file that define the corpus for compression",                 cxxopts::value<std::string>()->default_value(".\\data\\silicia_corpus.txt"))
-      ("b,bias",      "Bias threshold that define the uncompressibility of a chunk",        cxxopts::value<double>()->default_value("1.25"))
+      ("b,bias",      "Bias threshold that define the uncompressibility of a chunk",        cxxopts::value<double>()->default_value("0.9"))
       ("m,match",     "Algorithm that must be used for searching the matching tokens",      cxxopts::value<uint32_t>()->default_value("0"))
+      ("r,r64",       "Compression size to be rounded to closest 64 bytes",                 cxxopts::value<bool>()->default_value("false"))
       ("x,max_chunk", "Maximum number of chunk that must be compressed per file in corpus", cxxopts::value<uint64_t>()->default_value("0"))
       ("o,offset",    "Create histogram of search match offset",                            cxxopts::value<bool>()->default_value("false"))
       ("l,length",    "Create histogram of search match length",                            cxxopts::value<bool>()->default_value("false"))
@@ -599,7 +598,8 @@ int32_t main(int argc, const char* argv[])
    bool     isDumpOffset    = false;
    bool     isDumpLength    = false;
    bool     isDumpComp      = true;
-   double   threshold       = 1.25;
+   bool     isRounding      = false;
+   double   threshold       = 0.9;
 
    std::string corpusSet("");
    std::vector<uint32_t> chunkSize;
@@ -614,6 +614,7 @@ int32_t main(int argc, const char* argv[])
       corpusSet     = result["s"].as<std::string>();
       threshold     = result["b"].as<double>();
       matchAlgo     = result["m"].as<uint32_t>();
+      isRounding    = result["r"].as<bool>();
       isDumpOffset  = result["o"].as<bool>();
       isDumpLength  = result["l"].as<bool>();
       isDumpComp    = result["h"].as<bool>();
@@ -778,7 +779,10 @@ int32_t main(int argc, const char* argv[])
       dumpFileNewL4 << "# Source File Name = " << srcStatName << std::endl << "#" << std::endl;
       dumpFileNewL4 << "# Memory Chunck Size = " << chunkSize[chunckIndex] << std::endl << std::endl;
 
-      for (uint32_t i = 0; i < (chunkSize[chunckIndex] + 64); i++) {
+      uint32_t maxCompSize = chunkSize[chunckIndex] + lz4MaxExpand;
+      maxCompSize = isRounding ? (((maxCompSize + 63) >> 6) << 6) : maxCompSize;
+
+      for (uint32_t i = 0; i <= maxCompSize; i++) {
          (*compStatistic)[i] = 0;
          (*chunkAllCompStat[chunckIndex])[i] = 0;
 
@@ -856,13 +860,17 @@ int32_t main(int argc, const char* argv[])
             uint64_t intRatio = 0;
             uint64_t intCompressSize = 0;
 
-            if (lz4Reader.dataCompressSize <= compThreshold) {
+            uint64_t roundCompressSize = lz4Reader.dataCompressSize;
+            roundCompressSize = isRounding ? ((roundCompressSize + 63) >> 6) << 6 : roundCompressSize;
+            roundCompressSize = roundCompressSize <= compThreshold ? roundCompressSize : maxCompSize;
+
+            if (roundCompressSize <= compThreshold) {
 
                lz4Reader.totalChunkCompress++;
                lz4Reader.totalSizeReadStat += lz4Reader.dataReadSize;
-               lz4Reader.totalSizeCompressStat += lz4Reader.dataCompressSize;
+               lz4Reader.totalSizeCompressStat += roundCompressSize;
 
-               ratio = (((double)chunkSize[chunckIndex] / (double)lz4Reader.dataCompressSize)) * 100.0;
+               ratio = (((double)chunkSize[chunckIndex] / (double)roundCompressSize)) * 100.0;
                intRatio = ratio;
                intRatio = intRatio / 5;
                intRatio = intRatio * 5;
@@ -875,10 +883,10 @@ int32_t main(int argc, const char* argv[])
                }
                (*compStatistic)[intCompressSize]++;
             }
-            (*chunkAllCompStat[chunckIndex])[lz4Reader.dataCompressSize]++;
+            (*chunkAllCompStat[chunckIndex])[roundCompressSize]++;
             lz4Reader.totalChunkCount++;
             lz4Reader.totalSizeRead += lz4Reader.dataReadSize;
-            lz4Reader.totalSizeCompress += lz4Reader.dataCompressSize;
+            lz4Reader.totalSizeCompress += roundCompressSize;
 
             lz4DecompReader.available = lz4Reader.dataCompressSize;
             lz4DecompReader.compBuffer = lz4Reader.compBuffer.get();
@@ -893,9 +901,8 @@ int32_t main(int argc, const char* argv[])
                assert(false);
                exit(-6);
             }
-            uint32_t dataCompressSize = lz4Reader.dataCompressSize;
 
-            if (dataCompressSize <= compThreshold) {
+            if (roundCompressSize <= compThreshold) {
 
                ratioLoss = 100.0 * (ratio - ratioNewLZ4) / ratio;
                int64_t intNewLZ4Ratio = ratioLoss * 10.0;
@@ -1052,12 +1059,18 @@ int32_t main(int argc, const char* argv[])
          iterDist++;
          iterMean++;
       }
+      uint64_t maxChunkCompSize = chunkSize[chunkSize.size() - 1] + lz4MaxExpand;
+      maxChunkCompSize = isRounding ? ((maxChunkCompSize + 63) >> 6) << 6 : maxChunkCompSize;
 
-      for (uint32_t i = 1; i < (chunkSize[chunkSize.size()-1] + lz4MaxExpand); i++) {
+      for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
+
          std::stringstream ss;
          ss << i;
          for (int32_t chunckIndex = chunkSize.size()-1; 0 <= chunckIndex; --chunckIndex) {
-            if ((chunkSize[chunckIndex] + lz4MaxExpand) > i) {
+
+            uint64_t maxCompSize = chunkSize[chunckIndex] + lz4MaxExpand;
+            maxCompSize = isRounding ? ((maxCompSize + 63) >> 6) << 6 : maxCompSize;
+            if (maxCompSize >= i) {
                if (chunkAllCompStat[chunckIndex] != nullptr) {
                   ss << "," << (*chunkAllCompStat[chunckIndex])[i];
                }
@@ -1088,7 +1101,7 @@ int32_t main(int argc, const char* argv[])
    }
 
 
-   //for (uint32_t i = 1; i < (dataChunk[chunckIndex] + lz4MaxExpand); i++) {
+   //for (uint32_t i = 1; i < maxCompSize; i++) {
    //   //if ((*allCompStatistic)[i] != 0) {
    //   std::cout << "compression size = " << i << ", static count = " << (*allCompStatistic)[i] << std::endl;
    //   statFile << std::fixed << std::setprecision(2) << i << "," << ((double)dataChunk[chunckIndex] / (double)i) << "," << (*allCompStatistic)[i] << std::endl;
