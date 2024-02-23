@@ -1,7 +1,5 @@
 // corpuslz4.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
-
-//#include <windows.h>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -664,10 +662,6 @@ int32_t CorpusLZ4::DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reade
    return 0;
 }
 
-
-ContextLZ4 contextLZ4;
-LZ4CompReader lz4Reader;
-LZ4DecompReader lz4DecompReader;
 
 int32_t CorpusLZ4::Close(ContextLZ4 & contextLZ4, LZ4CompReader & lz4Reader, LZ4DecompReader & lz4DecompReader)
 {
