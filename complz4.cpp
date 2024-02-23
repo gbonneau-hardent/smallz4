@@ -598,7 +598,7 @@ smallz4::Match smallz4::findLongestMatch(const unsigned char* const data, uint64
 
         std::vector<Match> matches(uncompressed ? 0 : blockSize);
 
-        uint32_t i = 0;
+        int64_t i = 0;
         if (!uncompressed) {
            for (char character : data) {
               matches[i++].character = character;

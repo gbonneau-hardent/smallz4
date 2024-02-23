@@ -32,9 +32,9 @@ struct LZ4DecompReader
 };
 
 
-struct LZ4Reader
+struct LZ4CompReader
 {
-   LZ4Reader()
+   LZ4CompReader()
    {
       std::memset(fileBuffer.get(), 0, 131072);
       std::memset(compBuffer.get(), 0, 131072);

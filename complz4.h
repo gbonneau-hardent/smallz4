@@ -4,11 +4,13 @@
 #include <cstdlib>    // size_t
 #include <vector>
 #include <memory>
+#include <list>
+#include <map>
 #include <fstream>
 
-struct LZ4Reader
+struct LZ4CompReader
 {
-   LZ4Reader()
+   LZ4CompReader()
    {
       std::memset(fileBuffer.get(), 0, 131072);
       std::memset(compBuffer.get(), 0, 131072);
@@ -29,9 +31,17 @@ struct LZ4Reader
    uint64_t dataChunkSize = 0;
    uint64_t dataReadSize = 0;
    uint64_t dataCompressSize = 0;
+   uint64_t compThreshold = 0;
+   uint64_t chunkSize = 0;
+   uint32_t maxCompSize = 0;
    bool     dataEof = false;
 
+   std::string corpusName = "";
+   std::map<uint32_t, uint32_t> compStatistic;
    std::shared_ptr<std::ifstream> srcFile = nullptr;
+   std::map <std::ifstream*, std::string> corpusFileSet;
+   std::list<std::shared_ptr<std::ifstream>> corpusList;
+
 };
 
 
