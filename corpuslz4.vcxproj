@@ -20,10 +20,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="corpuslz4.cpp" />
+    <ClCompile Include="decomplz4.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="complz4.h" />
+    <ClInclude Include="corpuslz4.h" />
     <ClInclude Include="cxxopts.h" />
-    <ClInclude Include="smallz4.h" />
+    <ClCompile Include="complz4.cpp" />
+    <ClInclude Include="decomplz4.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

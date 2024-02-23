@@ -41,7 +41,7 @@
 #include <string.h> // memcpy
 #include <cassert>
 
-#include "corpuslz4.h"
+#include "decomplz4.h"
 
 #ifndef FALSE
 #define FALSE 0
@@ -57,15 +57,6 @@ static void unlz4error(const char* msg)
    fputc('\n', stderr);
    exit(1);
 }
-
-
-// ==================== I/O INTERFACE ====================
-
-
-// read one byte from input, see getByteFromIn()  for a basic implementation
-typedef unsigned char (*GET_BYTE)  (void* userPtr);
-// write several bytes,      see sendBytesToOut() for a basic implementation
-typedef void          (*SEND_BYTES)(const unsigned char*, unsigned int, void* userPtr);
 
 
 /// read a single byte (with simple buffering)
@@ -411,4 +402,3 @@ void unlz4(GET_BYTE getByte, SEND_BYTES sendBytes, const char* dictionary)
 {
    //unlz4_userPtr(getByte, sendBytes, dictionary, NULL, );
 }
-
