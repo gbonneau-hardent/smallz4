@@ -49,7 +49,7 @@
 #endif
 
 /// error handler
-static void unlz4error(const char* msg)
+void unlz4error(const char* msg)
 {
    // smaller static binary than fprintf(stderr, "ERROR: %s\n", msg);
    fputs("ERROR: ", stderr);
@@ -59,41 +59,11 @@ static void unlz4error(const char* msg)
 }
 
 
-/// read a single byte (with simple buffering)
-static unsigned char getByteFromIn(void* userPtr) // parameter "userPtr" not needed
-{
-   struct LZ4DecompReader* user = (struct LZ4DecompReader*)userPtr;
-
-   if (user->available == 0) {
-      unlz4error("out of data");
-   }
-   user->available--;
-   return *user->compBuffer++;
-}
-
-/// write a block of bytes
-static void sendBytesToOut(const unsigned char* data, unsigned int numBytes, void* userPtr)
-{
-   struct LZ4DecompReader* user = (struct LZ4DecompReader*)userPtr;
-   if (data != nullptr && numBytes > 0) {
-      for (unsigned int i = 0; i < numBytes; i++) {
-         if (user->decompPos >= 131072) {
-            unlz4error("decomp buffer overflow");
-            return;
-         }
-         user->decompBuffer.get()[user->decompPos++] = *data++;
-      }
-   }
-}
-
 
 // ==================== LZ4 DECOMPRESSOR ====================
 
-
-
-
 /// decompress everything in input stream (accessed via getByte) and write to output stream (via sendBytes)
-void unlz4_userPtr(GET_BYTE getByte, SEND_BYTES sendBytes, const char* dictionary, void* userPtr)
+void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr)
 {
    // signature
    // 
@@ -398,7 +368,7 @@ void unlz4_userPtr(GET_BYTE getByte, SEND_BYTES sendBytes, const char* dictionar
 }
 
 /// old interface where getByte and sendBytes use global file handles
-void unlz4(GET_BYTE getByte, SEND_BYTES sendBytes, const char* dictionary)
+void unlz4(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary)
 {
    //unlz4_userPtr(getByte, sendBytes, dictionary, NULL, );
 }

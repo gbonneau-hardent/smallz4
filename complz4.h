@@ -3,17 +3,46 @@
 #include <inttypes.h> // uint16_t, uint32_t, ...
 #include <cstdlib>    // size_t
 #include <vector>
+#include <memory>
+#include <fstream>
 
+struct LZ4Reader
+{
+   LZ4Reader()
+   {
+      std::memset(fileBuffer.get(), 0, 131072);
+      std::memset(compBuffer.get(), 0, 131072);
+   }
+
+   std::shared_ptr<char> fileBuffer = std::shared_ptr<char>(new char[131072]);
+   std::shared_ptr<char> compBuffer = std::shared_ptr<char>(new char[131072]);
+
+   uint64_t totalChunkCount = 0;
+   uint64_t totalChunkCompress = 0;
+   uint64_t totalSizeRead = 0;
+   uint64_t totalSizeReadStat = 0;
+   uint64_t totalSizeCompressStat = 0;
+   uint64_t totalSizeCompress = 0;
+   uint64_t totalMBytes = 0;
+   uint64_t lastMBytes = 0;
+   uint64_t loopCount = 0;
+   uint64_t dataChunkSize = 0;
+   uint64_t dataReadSize = 0;
+   uint64_t dataCompressSize = 0;
+   bool     dataEof = false;
+
+   std::shared_ptr<std::ifstream> srcFile = nullptr;
+};
 
 
 class smallz4
 {
 public:
    // read  several bytes, see getBytesFromIn() in smallz4.cpp for a basic implementation
-   typedef size_t(*GET_BYTES) (void* data, size_t numBytes, void* userPtr);
+   typedef size_t(*COMP_GET_BYTES) (void* data, size_t numBytes, void* userPtr);
 
    // write several bytes, see sendBytesToOut() in smallz4.cpp for a basic implementation
-   typedef void   (*SEND_BYTES)(const void* data, size_t numBytes, void* userPtr);
+   typedef void   (*COMP_SEND_BYTES)(const void* data, size_t numBytes, void* userPtr);
 
    /// version string
    static const char* const getVersion();
@@ -121,7 +150,7 @@ private:
    };
 
    /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-   static void lz4(GET_BYTES getBytes, SEND_BYTES sendBytes,
+   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes,
       unsigned short maxChainLength,
       const std::vector<unsigned char>& dictionary, // predefined dictionary
       bool useLegacyFormat = false,                 // old format is 7 bytes smaller if input < 8 MB
@@ -131,9 +160,9 @@ private:
 private:
 
    /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-   static void lz4(GET_BYTES getBytes, SEND_BYTES sendBytes, unsigned short maxChainLength = MaxChainLength, bool useLegacyFormat = false, void* userPtr = NULL);
+   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, unsigned short maxChainLength = MaxChainLength, bool useLegacyFormat = false, void* userPtr = NULL);
 
-   void compress(GET_BYTES getBytes, SEND_BYTES sendBytes, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const;
+   void compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const;
 
    static void estimateCosts(std::vector<Match>& matches);
 

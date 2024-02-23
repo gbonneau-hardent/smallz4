@@ -37,13 +37,13 @@ const char* const smallz4::getVersion()
 
 
 /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-void smallz4::lz4(GET_BYTES getBytes, SEND_BYTES sendBytes,  unsigned short maxChainLength, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
+void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes,  unsigned short maxChainLength, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
 {
    smallz4 obj(maxChainLength);
    obj.compress(getBytes, sendBytes, dictionary, useLegacyFormat, userPtr, isLess64Illegal);
 };
 
-void smallz4::lz4(GET_BYTES getBytes, SEND_BYTES sendBytes, unsigned short maxChainLength, bool useLegacyFormat, void* userPtr)
+void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, unsigned short maxChainLength, bool useLegacyFormat, void* userPtr)
 {
    lz4(getBytes, sendBytes, maxChainLength, std::vector<unsigned char>(), useLegacyFormat, userPtr);
 };
@@ -446,7 +446,7 @@ smallz4::Match smallz4::findLongestMatch(const unsigned char* const data, uint64
 
 
   /// compress everything in input stream (accessed via getByte) and write to output stream (via send), improve compression with a predefined dictionary
-  void smallz4::compress(GET_BYTES getBytes, SEND_BYTES sendBytes, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const
+  void smallz4::compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const
   {
      // ==================== write header ====================
      if (useLegacyFormat)

@@ -21,44 +21,6 @@
 #include "decomplz4.h"
 
 
-
-
-// ==================== COMMAND-LINE HANDLING ====================
-
-#ifndef boolean
-#define boolean bool
-#endif
-
-
-struct LZ4Reader
-{
-   LZ4Reader()
-   {
-      std::memset(fileBuffer.get(), 0, 131072);
-      std::memset(compBuffer.get(), 0, 131072);
-   }
-
-   std::shared_ptr<char> fileBuffer = std::shared_ptr<char>(new char [131072]);
-   std::shared_ptr<char> compBuffer = std::shared_ptr<char>(new char[131072]);
-
-   uint64_t totalChunkCount = 0;
-   uint64_t totalChunkCompress = 0;
-   uint64_t totalSizeRead = 0;
-   uint64_t totalSizeReadStat = 0;
-   uint64_t totalSizeCompressStat = 0;
-   uint64_t totalSizeCompress = 0;
-   uint64_t totalMBytes = 0;
-   uint64_t lastMBytes = 0;
-   uint64_t loopCount = 0;
-   uint64_t dataChunkSize = 0;
-   uint64_t dataReadSize = 0;
-   uint64_t dataCompressSize = 0;
-   bool     dataEof = false;
-
-   std::shared_ptr<std::ifstream> srcFile = nullptr;
-};
-
-
 std::string testLZ4("0123456789abkzde_0123456bczefthi01234567abcdefgh0123456789ABCDEFGHIJKLMNOP");
 
 size_t getBytesFromInTest(void* data, size_t numBytes, void* userPtr)
@@ -80,7 +42,7 @@ size_t getBytesFromInTest(void* data, size_t numBytes, void* userPtr)
    return testLZ4.size();
 }
 
-size_t getBytesFromIn(void* data, size_t numBytes, void* userPtr)
+size_t compBytesFromIn(void* data, size_t numBytes, void* userPtr)
 {
    if (data && numBytes > 0) {
       LZ4Reader* lz4Reader = (LZ4Reader*)userPtr;
@@ -115,7 +77,7 @@ size_t getBytesFromIn(void* data, size_t numBytes, void* userPtr)
 }
 
 
-void sendBytesToOut(const void* data, size_t numBytes, void* userPtr)
+void compBytesToOut(const void* data, size_t numBytes, void* userPtr)
 {
    LZ4Reader* lz4Reader = (LZ4Reader*)userPtr;
    if (data && numBytes > 0)
@@ -131,6 +93,35 @@ void sendBytesToOut(const void* data, size_t numBytes, void* userPtr)
       }
    }
 }
+
+
+/// read a single byte (with simple buffering)
+static unsigned char decompByteFromIn(void* userPtr) // parameter "userPtr" not needed
+{
+   struct LZ4DecompReader* user = (struct LZ4DecompReader*)userPtr;
+
+   if (user->available == 0) {
+      unlz4error("out of data");
+   }
+   user->available--;
+   return *user->compBuffer++;
+}
+
+/// write a block of bytes
+static void decompBytesToOut(const unsigned char* data, unsigned int numBytes, void* userPtr)
+{
+   struct LZ4DecompReader* user = (struct LZ4DecompReader*)userPtr;
+   if (data != nullptr && numBytes > 0) {
+      for (unsigned int i = 0; i < numBytes; i++) {
+         if (user->decompPos >= 131072) {
+            unlz4error("decomp buffer overflow");
+            return;
+         }
+         user->decompBuffer.get()[user->decompPos++] = *data++;
+      }
+   }
+}
+
 
 constexpr uint32_t lz4MaxExpand = 16;
 
@@ -234,18 +225,6 @@ int32_t main(int argc, const char* argv[])
 
    std::list<std::shared_ptr<std::ifstream>> corpusList;
    std::shared_ptr<unsigned char> fileBuffer = std::shared_ptr<unsigned char>(new unsigned char[65536]);
-
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\calgary_corpus.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\enwik9.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\silicia_corpus.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\video_media.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\protein_corpus.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\random.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\lukas_2d_8.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\lukas_2d_16.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\lukas_3d.txt");
-   //std::string listFileName("C:\\Users\\gbonneau\\git\\zlib\\data\\canterbury_corpus.txt");
-
    std::map <std::string, uint64_t> ratioStat;
    std::map <std::ifstream*, std::string> corpusFileName;
 
@@ -411,7 +390,7 @@ int32_t main(int argc, const char* argv[])
                   break;
                }
             }
-            smallz4::lz4(getBytesFromIn, sendBytesToOut, windowSize, dictionary, useLegacy, &lz4Reader);
+            smallz4::lz4(compBytesFromIn, compBytesToOut, windowSize, dictionary, useLegacy, &lz4Reader);
 
             if (lz4Reader.dataEof) {
                break;
@@ -462,7 +441,7 @@ int32_t main(int argc, const char* argv[])
 
             std::list<lz4Token> listSequenceLess64Illegal;
 
-            unlz4_userPtr(getByteFromIn, sendBytesToOut, nullptr, &lz4DecompReader);
+            unlz4_userPtr(decompByteFromIn, decompBytesToOut, nullptr, &lz4DecompReader);
 
             int retCmp = std::strncmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), chunkSize[chunckIndex]);
             if (retCmp != 0) {

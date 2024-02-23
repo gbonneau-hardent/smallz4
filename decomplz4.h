@@ -8,12 +8,12 @@
 
 
 // read one byte from input, see getByteFromIn()  for a basic implementation
-typedef unsigned char (*GET_BYTE)  (void* userPtr);
+typedef unsigned char (*DECOMP_GET_BYTE)  (void* userPtr);
 // write several bytes,      see sendBytesToOut() for a basic implementation
-typedef void          (*SEND_BYTES)(const unsigned char*, unsigned int, void* userPtr);
+typedef void          (*DECOMP_SEND_BYTES)(const unsigned char*, unsigned int, void* userPtr);
 
-
-void unlz4_userPtr(GET_BYTE getByte, SEND_BYTES sendBytes, const char* dictionary, void* userPtr);
+void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr);
+void unlz4error(const char* msg);
 
 typedef struct lz4Token
 {
