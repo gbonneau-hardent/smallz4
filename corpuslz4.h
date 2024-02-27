@@ -3,66 +3,57 @@
 #include <list>
 #include <memory>
 #include <map>
+#include <fstream>
 
 #include "cxxopts.h"
 
-typedef struct lz4Token
+
+typedef struct ContextLZ4
 {
-   unsigned char token;
-   unsigned short literalLength;
-   unsigned short offset;
-   unsigned short matchLength;
-   std::list<unsigned char> literal;
+   uint32_t windowSize;
+   uint32_t dataSize;
+   uint64_t maxChunk;
+   uint32_t matchAlgo;
 
-} lz4Token;
+   double   threshold;
+   bool     isRounding;
+   bool     isDumpOffset;
+   bool     isDumpLength;
+   bool     isDumpComp;
+
+   std::string corpusSet;
+   std::string fileName;
+   std::vector<uint32_t> chunkSize;
+   std::map <std::string, uint64_t> ratioStat;
+   std::map<uint32_t, uint32_t> compLossStatistic;
+   std::list<std::pair<uint32_t, uint32_t>> compLossCloud;
+   std::vector<std::shared_ptr<std::map<uint32_t, uint32_t>>> chunkAllCompStat = { 5, nullptr };
+
+   std::ofstream statFile;
+   std::ofstream statFileDist;
+   std::ofstream statFileLength;
+   std::ofstream statFileDistLength;
+   std::ofstream statFileNewL4;
+   std::ofstream dumpFileNewL4;
+
+} ContextLZ4;
 
 
-struct LZ4DecompReader
+class CorpusLZ4
 {
-   std::shared_ptr<char> decompBuffer = std::shared_ptr<char>(new char[131072]);
-   char* compBuffer;
-   unsigned int  available;
-   unsigned int  decompPos;
+public:
 
-   std::map<uint64_t, uint64_t> chunkStat;
-   std::list<lz4Token> listSequence;
-   std::map<uint64_t, uint64_t> mapDist;
-   std::map<uint64_t, uint64_t> mapLength;
-   std::map<uint64_t, std::map<uint64_t, uint64_t>> mapDistLength;
+   int32_t ParseOption(int argc, const char* argv[], ContextLZ4& contextLZ4);
+   int32_t InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, uint64_t chunkIndex);
+   int32_t InitDecompression(ContextLZ4& lz4Context, LZ4DecompReader& lz4DecompReader, uint64_t chunkIndex);
+   int32_t InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, std::shared_ptr<std::ifstream>& inputFile);
+   int32_t Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, uint32_t chunckIndex);
+   int32_t Decompress(ContextLZ4& contextLZ4, LZ4DecompReader& lz4DecompReader, uint32_t chunckIndex);
+   int32_t DumpFileStat(ContextLZ4& contextLZ4);
+   int32_t DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, LZ4DecompReader& lz4DecompReader, uint32_t chunckIndex);
+   int32_t Close(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, LZ4DecompReader& lz4DecompReader);
+
+private:
+
 };
 
-
-struct LZ4CompReader
-{
-   LZ4CompReader()
-   {
-      std::memset(fileBuffer.get(), 0, 131072);
-      std::memset(compBuffer.get(), 0, 131072);
-   }
-
-   std::shared_ptr<char> fileBuffer = std::shared_ptr<char>(new char[131072]);
-   std::shared_ptr<char> compBuffer = std::shared_ptr<char>(new char[131072]);
-
-   uint64_t totalChunkCount = 0;
-   uint64_t totalChunkCompress = 0;
-   uint64_t totalSizeRead = 0;
-   uint64_t totalSizeReadStat = 0;
-   uint64_t totalSizeCompressStat = 0;
-   uint64_t totalSizeCompress = 0;
-   uint64_t totalMBytes = 0;
-   uint64_t lastMBytes = 0;
-   uint64_t loopCount = 0;
-   uint64_t dataChunkSize = 0;
-   uint64_t dataReadSize = 0;
-   uint64_t dataCompressSize = 0;
-   bool     dataEof = false;
-
-   std::shared_ptr<std::ifstream> srcFile = nullptr;
-};
-
-
-struct LZ4Corpus
-{
-   LZ4DecompReader decompReader;
-   std::shared_ptr<cxxopts::Options> optionArg;
-};
