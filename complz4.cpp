@@ -37,19 +37,19 @@ const char* const smallz4::getVersion()
 
 
 /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes,  unsigned short maxChainLength, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
+void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
 {
    smallz4 obj(maxChainLength);
-   obj.compress(getBytes, sendBytes, dictionary, useLegacyFormat, userPtr, isLess64Illegal);
+   obj.compress(getBytes, sendBytes, matchAlgorithm, dictionary, useLegacyFormat, userPtr, isLess64Illegal);
 };
 
-void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, unsigned short maxChainLength, bool useLegacyFormat, void* userPtr)
+void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, bool useLegacyFormat, void* userPtr)
 {
-   lz4(getBytes, sendBytes, maxChainLength, std::vector<unsigned char>(), useLegacyFormat, userPtr);
+   lz4(getBytes, sendBytes, matchAlgorithm, maxChainLength, std::vector<unsigned char>(), useLegacyFormat, userPtr);
 };
 
   /// find longest match of data[pos] between data[begin] and data[end], use match chain
-smallz4::Match smallz4::findLongestMatch(const unsigned char* const data, uint64_t pos, uint64_t begin, uint64_t end, const Distance* const chain) const
+  Match smallz4::findLongestMatch(const unsigned char* const data, uint64_t pos, uint64_t begin, uint64_t end, const Distance* const chain) const
   {
     Match result;
     result.length = JustLiteral; // assume a literal => one byte
@@ -348,7 +348,7 @@ smallz4::Match smallz4::findLongestMatch(const unsigned char* const data, uint64
   }
 
 
-   smallz4::Match smallz4::findMatch(uint32_t index, uint32_t matchIndex, std::vector<Match>& matches) const
+  Match smallz4::findMatch(uint32_t index, uint32_t matchIndex, std::vector<Match>& matches) const
   {
      auto curMatch = matches[index];
      uint32_t distance = curMatch.distance;
@@ -444,9 +444,8 @@ smallz4::Match smallz4::findLongestMatch(const unsigned char* const data, uint64
   };
 
 
-
   /// compress everything in input stream (accessed via getByte) and write to output stream (via send), improve compression with a predefined dictionary
-  void smallz4::compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const
+  void smallz4::compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const
   {
      // ==================== write header ====================
      if (useLegacyFormat)
@@ -728,6 +727,14 @@ smallz4::Match smallz4::findLongestMatch(const unsigned char* const data, uint64
               skipMatches = matches[i].length;
            }
         }
+
+        //UserPtr* user = (UserPtr*)userPtr;
+        // Call the compression CModel of Dominic. It is based on a process on clock (to match the RTL) so we need to loop on each data so the cell can match
+        if (matchAlgorithm != nullptr)
+        {
+           matchAlgorithm(matches, blockSize, dataBlock);
+        }
+
         // last bytes are always literals
         while (i < int(matches.size()))
            matches[i++].length = JustLiteral;

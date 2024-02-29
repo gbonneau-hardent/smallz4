@@ -8,6 +8,9 @@
 #include <map>
 #include <fstream>
 
+#include "matchlz4.h"
+
+
 struct LZ4CompReader
 {
    LZ4CompReader()
@@ -41,13 +44,13 @@ struct LZ4CompReader
    std::shared_ptr<std::ifstream> srcFile = nullptr;
    std::map <std::ifstream*, std::string> corpusFileSet;
    std::list<std::shared_ptr<std::ifstream>> corpusList;
-
 };
 
 
 class smallz4
 {
 public:
+
    // read  several bytes, see getBytesFromIn() in smallz4.cpp for a basic implementation
    typedef size_t(*COMP_GET_BYTES) (void* data, size_t numBytes, void* userPtr);
 
@@ -70,11 +73,6 @@ public:
 private:
 
    // ----- constants and types -----
-
-   /// a block can be up to 4 MB, so uint32_t would suffice but uint64_t is quite a bit faster on my x64 machine
-   typedef uint64_t Length;
-   /// matches must start within the most recent 64k
-   typedef uint16_t Distance;
 
    enum
    {
@@ -148,19 +146,9 @@ private:
 
    public:
       
-   /// match
-   struct Match
-   {
-      /// length of match
-      Length   length;
-      /// start of match
-      Distance distance;
-      // character
-      char     character;
-   };
-
+ 
    /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes,
+   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm,
       unsigned short maxChainLength,
       const std::vector<unsigned char>& dictionary, // predefined dictionary
       bool useLegacyFormat = false,                 // old format is 7 bytes smaller if input < 8 MB
@@ -170,9 +158,11 @@ private:
 private:
 
    /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, unsigned short maxChainLength = MaxChainLength, bool useLegacyFormat = false, void* userPtr = NULL);
+   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength = MaxChainLength, bool useLegacyFormat = false, void* userPtr = NULL);
 
-   void compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const;
+   void compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const;
+
+   //void hw_model_compress(std::vector<smallz4::Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock) const;
 
    static void estimateCosts(std::vector<Match>& matches);
 

@@ -17,6 +17,7 @@
 #include "cxxopts.h"
 #include "complz4.h"
 #include "decomplz4.h"
+#include "HWMatchEngine.h"
 #include "corpuslz4.h"
 
 
@@ -193,6 +194,8 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
       }
    }
 
+   contextLZ4.matchEngine = contextLZ4.matchAlgo ? hw_model_compress : nullptr;
+
    contextLZ4.chunkAllCompStat.resize(contextLZ4.chunkSize.size(), nullptr);
 
    return 0;
@@ -353,7 +356,7 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
    lz4Reader.dataCompressSize = 0;
    lz4Reader.dataReadSize = 0;
 
-   smallz4::lz4(compBytesFromIn, compBytesToOut, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
+   smallz4::lz4(compBytesFromIn, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
 
    if (lz4Reader.dataEof) {
       return 0;

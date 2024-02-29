@@ -36,6 +36,8 @@ typedef struct ContextLZ4
    std::ofstream statFileNewL4;
    std::ofstream dumpFileNewL4;
 
+   COMP_SEARCH_MATCH matchEngine;
+
 } ContextLZ4;
 
 
