@@ -19,8 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="comp_c_model.c" />
     <ClCompile Include="corpuslz4.cpp" />
     <ClCompile Include="decomplz4.cpp" />
+    <ClCompile Include="DPICall.cpp" />
     <ClCompile Include="HWMatchEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -29,6 +31,7 @@
     <ClInclude Include="cxxopts.h" />
     <ClCompile Include="complz4.cpp" />
     <ClInclude Include="decomplz4.h" />
+    <ClInclude Include="DPICall.h" />
     <ClInclude Include="HWMatchEngine.h" />
     <ClInclude Include="matchlz4.h" />
   </ItemGroup>

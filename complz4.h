@@ -42,8 +42,10 @@ struct LZ4CompReader
    std::string corpusName = "";
    std::map<uint32_t, uint32_t> compStatistic;
    std::shared_ptr<std::ifstream> srcFile = nullptr;
+   std::shared_ptr<std::ifstream> compFile = nullptr;
    std::map <std::ifstream*, std::string> corpusFileSet;
    std::list<std::shared_ptr<std::ifstream>> corpusList;
+   std::list<std::shared_ptr<std::ifstream>>::iterator iterFile;
 };
 
 

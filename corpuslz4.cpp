@@ -126,6 +126,25 @@ static void decompBytesToOut(const unsigned char* data, unsigned int numBytes, v
 constexpr uint32_t lz4MaxExpand = 16;
 
 
+chandle CorpusLZ4::CreateContext() { 
+
+   auto corpuslz4 = std::make_shared<CorpusLZ4>();
+   corpuslz4->Reference();
+
+   corpuslz4->ptrContextLZ4 = std::make_shared<ContextLZ4>();
+   corpuslz4->ptrLZ4Reader = std::make_shared<LZ4CompReader>();
+   corpuslz4->ptrLZ4DecompReader = std::make_shared<LZ4DecompReader>();
+
+   return reinterpret_cast<chandle>(corpuslz4.get());
+}
+
+
+void CorpusLZ4::DestroyContext() {
+
+   selfReference = nullptr;
+}
+
+
 int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contextLZ4)
 {
    std::unique_ptr<cxxopts::Options> allocated(new cxxopts::Options(argv[0], "Simulation application to compute the minimum number of trials window n needed to reach the minimum observations o having probability p\n\nExample command line arguments: -p .00025844 -o 4 -t 0.95 -c .00000002166\n"));
@@ -246,6 +265,7 @@ int32_t CorpusLZ4::InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Rea
       listFile.close();
 
       lz4Reader.corpusName = lz4Context.corpusSet.substr(lz4Context.corpusSet.find_last_of("/\\") + 1);
+      lz4Reader.iterFile = lz4Reader.corpusList.begin();
    }
 
    lz4Reader.compStatistic.clear();
@@ -333,6 +353,8 @@ int32_t CorpusLZ4::InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, 
 
    std::string fileName = lz4Reader.corpusFileSet[inputFile.get()];
    lz4Context.fileName = fileName;
+
+   std::cout << "Comp File = " << fileName << std::endl;
 
    lz4Context.ratioStat[fileName] = 0;
    lz4Context.statFileNewL4 << "# File Compressed : " << fileName << std::endl;
@@ -626,6 +648,18 @@ int32_t CorpusLZ4::Close(ContextLZ4 & contextLZ4, LZ4CompReader & lz4Reader, LZ4
    return 0;
 }
 
+std::shared_ptr<std::ifstream> CorpusLZ4::getNextFile(LZ4CompReader & lz4Reader)
+{
+   if (lz4Reader.iterFile != lz4Reader.corpusList.end()) {
+
+      auto inputFile = (*lz4Reader.iterFile);
+      lz4Reader.iterFile++;
+      lz4Reader.compFile = inputFile;
+
+      return inputFile;
+   }
+   return nullptr;
+}
 
 
 int32_t simulation(int argc, const char* argv[])
@@ -641,11 +675,11 @@ int32_t simulation(int argc, const char* argv[])
 
       corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
       corpusLZ4.InitDecompression(contextLZ4, lz4DecompReader, chunckIndex);
-
-      for (auto iterFile = lz4Reader.corpusList.begin(); iterFile != lz4Reader.corpusList.end(); ++iterFile) {
+      
+      while (std::shared_ptr<std::ifstream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
 
          uint64_t numLoop = 0;
-         corpusLZ4.InitReader(contextLZ4, lz4Reader, *iterFile);
+         corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
 
          while (true) {
             if (contextLZ4.maxChunk != 0) {
@@ -683,5 +717,10 @@ int32_t main(int argc, const char* argv[])
 {
    std::cout << "Welcome Compression Infrastructure" << std::endl;
 
+   bool isUseDPICall = false;
+
+   if (isUseDPICall) {
+      return comp_c_model(argc, argv);
+   }
    return simulation(argc, argv);
 }
