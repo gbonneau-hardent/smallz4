@@ -717,10 +717,5 @@ int32_t main(int argc, const char* argv[])
 {
    std::cout << "Welcome Compression Infrastructure" << std::endl;
 
-   bool isUseDPICall = false;
-
-   if (isUseDPICall) {
-      return comp_c_model(argc, argv);
-   }
    return simulation(argc, argv);
 }
