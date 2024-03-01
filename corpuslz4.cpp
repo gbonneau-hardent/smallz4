@@ -123,7 +123,7 @@ static void decompBytesToOut(const unsigned char* data, unsigned int numBytes, v
 }
 
 
-constexpr uint32_t lz4MaxExpand = 16;
+constexpr uint32_t lz4MaxExpand = 15;
 
 
 chandle CorpusLZ4::CreateContext() { 
