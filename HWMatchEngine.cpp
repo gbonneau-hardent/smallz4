@@ -117,6 +117,7 @@ public:
                   match_list[pos].pos = pos;
                }
                small_counter[offset] = 0;
+               //large_count_status[offset] = 0;
             }
             if (verbose) printf(" %d", small_counter[offset]);
          }
@@ -154,16 +155,24 @@ public:
       {
          for (int offset = 0; offset < NB_BYTE; offset++)
          {
-            //printf("%d=>", large_count_status[offset]);
+            if (verbose) printf("%d=>", large_count_status[offset]);
             large_count_status[offset] = candidate_large_count_status[offset];
-            //printf("%d -", large_count_status[offset]);
+            if (verbose) printf("%d - ", large_count_status[offset]);
          }
-         //printf("\n");
+         if (verbose) printf("\n");
          large_counter = 0;
       }
       else
       {
-         large_counter++;
+          for (int offset = 0; offset < NB_BYTE; offset++)
+          {
+              if (verbose) printf("%d=>", large_count_status[offset]);
+              if (candidate_large_count_status[offset]==0)
+                large_count_status[offset] = 0;
+              if (verbose) printf("%d - ", large_count_status[offset]);
+          }
+          if (verbose) printf("\n");
+          large_counter++;
       }
 
 
@@ -173,21 +182,24 @@ public:
    {
       large_match.valid = 0;
       large_match.length = 0;
+
       for (int pos = 0; pos < NB_BYTE; pos++)
       {
-         if ((match_list[pos].valid) && (large_count_status[match_list[pos].offset])) // Large Match Candidate
+         if ((match_list[pos].valid) && (large_count_status[match_list[pos].offset]) && (match_list[pos].length>=NB_BYTE)) // Large Match Candidate
          {
-            if (large_match.length < match_list[pos].length)
+            if (verbose) printf("LM candidate: %d length=%d pos=%d\n", pos, match_list[pos].length, match_list[pos].pos);
+            if (large_match.length < (match_list[pos].length + match_list[pos].pos))
             {
+               if (verbose) printf("PASSING LM candidate: %d length=%d pos=%d\n", pos, match_list[pos].length, match_list[pos].pos);
                large_match.valid = 1;
-               large_match.length = match_list[pos].length;
+               large_match.length = match_list[pos].length + match_list[pos].pos;
                large_match.offset = match_list[pos].offset;
                large_match.pos = match_list[pos].pos;
             }
          }
       }
       // Update length
-      large_match.length = large_match.length + large_match.pos + (large_counter * NB_BYTE);
+      large_match.length = large_match.length + (large_counter * NB_BYTE);
    }
 
    void processClock()
@@ -248,7 +260,7 @@ public:
          match_cell[cell].init();
       }
 
-      //match_cell[65].verbose = 1;
+      match_cell[0].verbose = 0;
    }
 
    void loadData(unsigned char* data)
@@ -293,7 +305,7 @@ public:
 
             if (match.valid)
             {
-               if (verbose) printf("UNFILTERED SMALL  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
+               //if (verbose) printf("UNFILTERED SMALL  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
             }
 
             if (match.valid && standard_match[pos].length < match.length)
@@ -310,7 +322,7 @@ public:
 
          if (match.valid)
          {
-            if (verbose) printf("UNFILTERED LARGE  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
+            //if (verbose) printf("UNFILTERED LARGE  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
          }
 
          if (match.valid && large_match.length < match.length)
@@ -327,17 +339,26 @@ public:
       {
          if (standard_match[pos].valid)
          {
-            if (verbose) printf("+++SMALL MATCH: pos:%d offset:%d length:%d\n", standard_match[pos].pos, standard_match[pos].offset, standard_match[pos].length);
+            if (verbose) printf("SMALL MATCH: pos:%d offset:%d length:%d\n", standard_match[pos].pos, standard_match[pos].offset, standard_match[pos].length);
             matchList[cycle * NB_BYTE + pos] = standard_match[pos];
          }
       }
       if (large_match.valid)
       {
-         if (verbose) printf("+++LARGE  MATCH: pos:%d offset:%d length:%d\n", large_match.pos, large_match.offset, large_match.length);
+         if (verbose) printf("LARGE  MATCH: pos:%d offset:%d length:%d\n", large_match.pos, large_match.offset, large_match.length);
          matchList[large_match.pos] = large_match;
       }
 
       cycle++;
+      if (cycle > 0 && cycle < 0) {
+          printf("CYCLE: %d\n", cycle);
+          verbose = 1;
+          match_cell[1].verbose = 1;
+      }
+      else {
+          verbose = 0;
+          match_cell[1].verbose = 0;
+      }
 
    }
 
@@ -380,7 +401,7 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
    std::cout << "Using HW Cmodel to Compress" << std::endl;
 
    for (int ii = 0; ii < matches.size(); ii++) {
-      //printf("MATCH:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
+        //printf("MATCH_ORI:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
    }
 
    // ERASE the Current MATCHLIST
@@ -435,7 +456,9 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
    }
 
    for (int ii = 0; ii < matches.size(); ii++) {
-      //printf("MATCH:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
+      //printf("MATCH_NEW:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
    }
+
+
 }
 

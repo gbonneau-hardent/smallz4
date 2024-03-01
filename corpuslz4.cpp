@@ -699,6 +699,17 @@ int32_t simulation(int argc, const char* argv[])
 
             int retCmp = std::strncmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
             if (retCmp != 0) {
+                char* orig;
+                char* hw;
+
+                orig = lz4Reader.fileBuffer.get();
+                hw = lz4DecompReader.decompBuffer.get();
+
+                for (int ii = 0; ii < 4096; ii++)
+                {
+                    if (orig[ii] != hw[ii]) printf("%d - %d:%d %d\n", ii, orig[ii], hw[ii], (orig[ii] != hw[ii]));
+                }
+
                std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
                exit(-2);
             }
