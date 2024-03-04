@@ -662,6 +662,17 @@ std::shared_ptr<std::ifstream> CorpusLZ4::getNextFile(LZ4CompReader & lz4Reader)
 }
 
 
+void CorpusLZ4::dumpDiff(const std::shared_ptr<char>& compBuffer, const std::shared_ptr<char>& decompBuffer, uint32_t chunkSize) const
+{
+   char * orig = compBuffer.get();
+   char * hw = decompBuffer.get();
+
+   for (int ii = 0; ii < 4096; ii++) {
+      if (orig[ii] != hw[ii])
+         std::cout << "i = " << ii << ", orig[i] = " << orig[ii] << ", hw[i] = " << hw[ii] << "(orig[i] != hw[i]) : " << (orig[ii] != hw[ii]) << std::endl;
+   }
+}
+
 int32_t simulation(int argc, const char* argv[])
 {
    CorpusLZ4 corpusLZ4;
@@ -696,20 +707,10 @@ int32_t simulation(int argc, const char* argv[])
             lz4DecompReader.decompPos  = 0;
 
             corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
-
             int retCmp = std::strncmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
+
             if (retCmp != 0) {
-                char* orig;
-                char* hw;
-
-                orig = lz4Reader.fileBuffer.get();
-                hw = lz4DecompReader.decompBuffer.get();
-
-                for (int ii = 0; ii < 4096; ii++)
-                {
-                    if (orig[ii] != hw[ii]) printf("%d - %d:%d %d\n", ii, orig[ii], hw[ii], (orig[ii] != hw[ii]));
-                }
-
+               corpusLZ4.dumpDiff(lz4Reader.fileBuffer, lz4DecompReader.decompBuffer, contextLZ4.chunkSize[chunckIndex]);
                std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
                exit(-2);
             }

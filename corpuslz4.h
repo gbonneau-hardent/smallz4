@@ -82,6 +82,8 @@ public:
 
    virtual std::shared_ptr<std::ifstream> getNextFile(LZ4CompReader& lz4Reader);
 
+   void dumpDiff(const std::shared_ptr<char>& compBuffer, const std::shared_ptr<char>& decompBuffer, uint32_t chunkSize) const;
+
    std::shared_ptr<ContextLZ4> getContextlz4()     { return ptrContextLZ4; }
    std::shared_ptr<LZ4CompReader> getComplz4()     { return ptrLZ4Reader; }
    std::shared_ptr<LZ4DecompReader> getDecomplz4() { return ptrLZ4DecompReader; }
