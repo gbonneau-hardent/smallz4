@@ -142,9 +142,6 @@ xviolin = 0.0
 set palette defined ( 0.0 'web-green', .5 'goldenrod', 0.8 'red', 1.0 'black')
 set cbtics ("0.98" 1.0, "2.0" 0.5, "5.0" .2, "10.0" .1, "\U+221E" 0.0125)
 
-#TODO: Rework for any chunk and dont use first but screen
-#set label 9 "Silesia Corpus\nSize = 4096" at first 0,4600 center tc palette frac 0.9
-
 fmt  = "% 14s :% 6.2f"
 format = fmt . "\n" . fmt . "\n" . fmt . "\n" . fmt . "\n" . fmt . "\n" . fmt 
 format = bias == 0 ? format : format . "\n" . fmt
@@ -163,6 +160,9 @@ set bmargin 3
 
 set title font ',13'
 set title "Silesia Corpus\nSize = ".sprintf("%d", chunkSize)
+set xlabel "Density Of Page Chunks Compressed"
+set ylabel "Compressed size of Page Chunks"
+set cblabel "Compression Ratio of Page Chunks"
 
 set object 10 rect from -1.25,lowQuartileValue to 1.25,upQuartileValue fc lt -1 lw 2 front
 set obj 10 fillstyle empty border -1 front

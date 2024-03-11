@@ -27,6 +27,7 @@ typedef struct ContextLZ4
 
    std::string corpusSet;
    std::string fileName;
+   std::string command;
    std::vector<uint32_t> chunkSize;
    std::map <std::string, uint64_t> ratioStat;
    std::map<uint32_t, uint32_t> compLossStatistic;
