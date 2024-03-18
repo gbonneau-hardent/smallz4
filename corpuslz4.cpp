@@ -270,9 +270,8 @@ int32_t CorpusLZ4::InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Rea
       listFile.close();
 
       lz4Reader.corpusName = lz4Context.corpusSet.substr(lz4Context.corpusSet.find_last_of("/\\") + 1);
-      lz4Reader.iterFile = lz4Reader.corpusList.begin();
    }
-
+   lz4Reader.iterFile = lz4Reader.corpusList.begin();
    lz4Reader.compStatistic.clear();
    lz4Context.chunkAllCompStat[chunkIndex] = std::make_shared<std::map<uint32_t, uint32_t>>();
 
@@ -460,6 +459,7 @@ int32_t CorpusLZ4::DumpFileStat(ContextLZ4& contextLZ4)
    return 0;
 }
 
+
 int32_t CorpusLZ4::DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, LZ4DecompReader& lz4DecompReader, uint32_t chunckIndex)
 {
    uint64_t numDist = 0;
@@ -601,25 +601,68 @@ int32_t CorpusLZ4::DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reade
       iterDist++;
       iterMean++;
    }
-   uint64_t maxChunkCompSize = contextLZ4.chunkSize[contextLZ4.chunkSize.size() - 1] + lz4MaxExpand;
+   uint64_t maxChunkCompSize = contextLZ4.chunkSize[chunckIndex] + lz4MaxExpand;
    maxChunkCompSize = contextLZ4.isRounding ? ((maxChunkCompSize + 63) >> 6) << 6 : maxChunkCompSize;
 
+   uint64_t allRemainer = 0;
+   uint64_t remainer = 0;
+   uint64_t divider = 4096 / contextLZ4.chunkSize[chunckIndex];
+
+   //for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
+   //
+   //   std::stringstream ss;
+   //   ss << i;
+   //   for (int32_t chunckIndex = contextLZ4.chunkSize.size() - 1; 0 <= chunckIndex; --chunckIndex) {
+   //
+   //      uint64_t maxCompSize = contextLZ4.chunkSize[chunckIndex] + lz4MaxExpand;
+   //      maxCompSize = contextLZ4.isRounding ? ((maxCompSize + 63) >> 6) << 6 : maxCompSize;
+   //      if (maxCompSize >= i) {
+   //         if (contextLZ4.chunkAllCompStat[chunckIndex] != nullptr) {
+   //            ss << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i];
+   //         }
+   //      }
+   //   }
+   //   contextLZ4.statFile << std::fixed << std::setprecision(2) << ss.str() << std::endl;
+   // //contextLZ4.statFile << std::fixed << std::setprecision(2) << i << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i] << std::endl;
+   //}
+
    for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
-
-      std::stringstream ss;
-      ss << i;
-      for (int32_t chunckIndex = contextLZ4.chunkSize.size() - 1; 0 <= chunckIndex; --chunckIndex) {
-
-         uint64_t maxCompSize = contextLZ4.chunkSize[chunckIndex] + lz4MaxExpand;
-         maxCompSize = contextLZ4.isRounding ? ((maxCompSize + 63) >> 6) << 6 : maxCompSize;
-         if (maxCompSize >= i) {
-            if (contextLZ4.chunkAllCompStat[chunckIndex] != nullptr) {
-               ss << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i];
-            }
-         }
-      }
-      contextLZ4.statFile << std::fixed << std::setprecision(2) << ss.str() << std::endl;
+   
+      uint32_t numChunk = (*contextLZ4.chunkAllCompStat[chunckIndex])[i] + remainer;
+      uint32_t avgChunk = numChunk / divider;
+      remainer = numChunk - avgChunk * divider;
+   
+      contextLZ4.statFile << std::fixed << std::setprecision(2) << i << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i] << "," << avgChunk << std::endl;
    }
+
+
+   //uint32_t idx = 1;
+   //uint32_t statChunk = 0;
+   //
+   //for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
+   //
+   //   uint32_t allNumChunk = (*contextLZ4.chunkAllCompStat[chunckIndex])[i] + allRemainer;
+   //   uint32_t allAvgChunk = allNumChunk / divider;
+   //   allRemainer = allNumChunk - allAvgChunk * divider;
+   //
+   //   assert(remainer == 0);
+   //   uint32_t numChunk = allAvgChunk + remainer;
+   //   if (numChunk != 0) {
+   //      std::cout << "";
+   //   }
+   //   uint32_t avgChunk = numChunk / divider;
+   //   remainer = numChunk - avgChunk * divider;
+   //
+   //   for (uint32_t j = 1; j <= divider; j++) {
+   //      statChunk = avgChunk;
+   //      if (remainer != 0) {
+   //         statChunk += 1;
+   //         remainer--;
+   //      }
+   //      contextLZ4.statFile << std::fixed << std::setprecision(2) << idx++ << "," << ((j == 1) ? (*contextLZ4.chunkAllCompStat[chunckIndex])[i] : 0) << "," << statChunk << std::endl;
+   //   }
+   //}
+
    std::cout << std::fixed << std::setprecision(1) << std::endl;
    std::cout << "Total chunks (size = " << contextLZ4.chunkSize[chunckIndex] << ") processed = " << lz4Reader.totalChunkCount << ", chunks compressed = " << lz4Reader.totalChunkCompress << " (" << (lz4Reader.totalChunkCompress * 100.0) / lz4Reader.totalChunkCount << ")" << std::endl;
    std::cout << std::fixed << std::setprecision(2);

@@ -38,6 +38,12 @@
     <ClInclude Include="HWMatchEngine.h" />
     <ClInclude Include="matchlz4.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="violon_3_no_log_session.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="violon_no_log_session.gp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

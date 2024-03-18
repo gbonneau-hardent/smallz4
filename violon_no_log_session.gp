@@ -3,7 +3,7 @@ reset session
 set encoding utf8
 set datafile separator comma
 cd 'C:\Users\gbonneau\git\smallz4'
-corpusFile = "lz4_silicia_corpus.txt_4096.csv"
+corpusFile = "lz4_silicia_corpus.txt_512.csv"
 stats corpusFile nooutput
 numRecord = STATS_records
 chunkSize = numRecord-15.0
@@ -12,11 +12,11 @@ array M[numRecord]
 array N[numRecord]
 
 stats corpusFile using (M[int($0+1)] = $1) name "M" nooutput
-stats corpusFile using (N[int($0+1)] = $2) name "N" nooutput
+stats corpusFile using (N[int($0+1)] = $3) name "N" nooutput
 array M_x_N[numRecord]
 array Bias_M_x_N[numRecord]
 
-bias = 2048.0
+bias = chunkSize / 2
 
 stats N using (M_x_N[int($0+1)] = N[int($0+1)]*M[int($0+1)]) name "M_x_N" nooutput
 #stats N using (M[$0+1] <= bias ? N[int($0+1)]*M[int($0+1)] : 0) name "M_x_N_B" nooutput
@@ -119,14 +119,23 @@ unset table
 
 stats $Data name "D" nooutput
 
+#preliminary linear formula for Banwdith value. Wanted: 10 -> 4095, 2 -> 512
+# y = slope*(x) + origin -> origin = y - slope*(x)
+# bandwidth is y
+
+slope = (10.0 - 2.0)/(4096.0 - 512)
+origin = 10 - slope*4096
+chunkBandwidth = slope*chunkSize + origin
+print chunkBandwidth
+
 set table $kdensity
     set samples (numSample-1)
-    plot $Data using 2:(1) smooth kdensity bandwidth 10
+    plot $Data using 2:(1) smooth kdensity bandwidth chunkBandwidth
 unset table
 
-stats $kdensity name "K" nooutput
-
 set datafile separator whitespace
+stats $kdensity using 1:2 name "K" nooutput
+
 set border 3
 
 set xtics nomirror
@@ -134,25 +143,33 @@ set label 8
 set ytics nomirror
 unset key
 
+boxsize = K_max_y * 0.03
+
 set style fill solid 0.7 
-set boxwidth 2.5
+set boxwidth boxsize
 
 xviolin = 0.0
 
-set palette defined ( 0.0 'web-green', .5 'goldenrod', 0.8 'red', 1.0 'black')
-set cbtics ("0.98" 1.0, "2.0" 0.5, "5.0" .2, "10.0" .1, "\U+221E" 0.0125)
+intMaxColor = int(100.0*(chunkSize / numRecord))
+maxColor = intMaxColor / 100.0
+print intMaxColor
+print maxColor
+sprintf(%4f, maxColor)
+
+set palette defined ( 0.0 'web-green', .5 'goldenrod', 0.8 'red', maxColor 'black')
+set colorbox invert
+set cbrange[0:maxColor]
+set cbtics (sprintf("%2.2f", maxColor) maxColor, "2.0" 0.5, "5.0" .2, "10.0" .1, "\U+221E" 0.0)
 
 fmt  = "% 14s :% 6.2f"
 format = fmt . "\n" . fmt . "\n" . fmt . "\n" . fmt . "\n" . fmt . "\n" . fmt 
 format = bias == 0 ? format : format . "\n" . fmt
 
 infostat = sprintf(format, "Mean", compMeanRatio, "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
-
 infostat = bias == 0 ? infostat : sprintf(format, "Mean", compMeanRatio, "Mean (Bias)", compBiasMeanRatio, "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
 
-
 set style textbox 2 opaque fc rgb 0xb0b0b0 margin 4,4
-set label 10 infostat at graph .95,1.0 right boxed bs 2 front font "Courier New"
+set label 11 infostat at graph .95,1.0 right boxed bs 2 front font "Courier New"
 
 ymax = chunkSize + int(chunkSize/20)
 set yrange[ymax:0]
@@ -164,10 +181,18 @@ set xlabel "Density Of Page Chunks Compressed"
 set ylabel "Compressed size of Page Chunks"
 set cblabel "Compression Ratio of Page Chunks"
 
-set object 10 rect from -1.25,lowQuartileValue to 1.25,upQuartileValue fc lt -1 lw 2 front
+set object 10 rect from -0.25-boxsize/2, lowQuartileValue to 0.25+boxsize/2, upQuartileValue fc lt -1 lw 2 front
 set obj 10 fillstyle empty border -1 front
 
-plot $kdensity using (0):1:($2):(0):($1/4096.0) with vectors lc palette z, '' using (0):1:(-$2):(0):($1/4096) with vectors lc palette, \
+#plot $kdensity using (0):1:($2):(0):($1/4096.0) with vectors lc palette z, '' using (0):1:(-$2):(0):($1/4096) with vectors lc palette, \
+#'+' every ::::0 using (xviolin):(lowQuartileValue):(posMin):(posMax):(upQuartileValue) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars, \
+#'+' every ::::0 using (xviolin):(medianValue):(medianValue):(medianValue):(medianValue) with candlesticks fs solid lt -1 lw 2 notitle
+
+plot $kdensity using (0):1:($2):(0):($1/chunkSize) with vectors lc palette z, '' using (0):1:(-$2):(0):($1/chunkSize) with vectors lc palette, \
 '+' every ::::0 using (xviolin):(lowQuartileValue):(posMin):(posMax):(upQuartileValue) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars, \
 '+' every ::::0 using (xviolin):(medianValue):(medianValue):(medianValue):(medianValue) with candlesticks fs solid lt -1 lw 2 notitle
+
+#plot $kdensity using (0):1:($2):(0) with vectors lc palette, '' using (0):1:(-$2):(0) with vectors lc palette \
+#'+' every ::::0 using (xviolin):(lowQuartileValue):(posMin):(posMax):(upQuartileValue) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars, \
+#'+' every ::::0 using (xviolin):(medianValue):(medianValue):(medianValue):(medianValue) with candlesticks fs solid lt -1 lw 2 notitle
 
