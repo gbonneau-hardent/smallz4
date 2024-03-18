@@ -12,7 +12,7 @@ typedef struct Match
    char     character;  // character
 } Match;
 
+#ifdef __cplusplus
 // write several bytes, see sendBytesToOut() in smallz4.cpp for a basic implementation
-typedef void   (*COMP_SEARCH_MATCH)(std::vector<Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock);
-
-
+ typedef void   (*COMP_SEARCH_MATCH)(std::vector<Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock);
+#endif
