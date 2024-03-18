@@ -346,19 +346,19 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
 {
    std::cout << "Using HW Cmodel to Compress" << std::endl;
 
-   for (int ii = 0; ii < matches.size(); ii++) {
+   for (unsigned int ii = 0; ii < matches.size(); ii++) {
         //printf("MATCH_ORI:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
    }
 
    // ERASE the Current MATCHLIST
-   for (int ii = 0; ii < matches.size(); ii++) {
+   for (unsigned int ii = 0; ii < matches.size(); ii++) {
       matches[ii].distance = 0;
       matches[ii].length = 0;
    }
 
    // Prepare data
    unsigned char input_string[CHUNKSIZE];
-   for (int ii = 0; ii < CHUNKSIZE; ii++) {
+   for (unsigned int ii = 0; ii < CHUNKSIZE; ii++) {
       if (ii < blockSize) input_string[ii] = dataBlock[ii]; else input_string[ii] = 0;
       //printf("DATA\t%d\t%d\n", ii, input_string[ii]);
    }
@@ -380,7 +380,7 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
 
       if (matchList[pos].valid) {
          //printf("-----  MATCH: pos:%d offset:%d length:%d\n", matchList[pos].pos, matchList[pos].offset, matchList[pos].length);
-         if ((matchList[pos].pos - matchList[pos].length < blockSize) && (matchList[pos].pos - matchList[pos].length > 0)) {
+         if (((matchList[pos].pos - matchList[pos].length) < blockSize) && ((matchList[pos].pos - matchList[pos].length) > 0)) {
 
             if (matchList[pos].pos <= blockSize - 6) {
                matches[matchList[pos].pos - matchList[pos].length].distance = matchList[pos].offset + 1;
@@ -394,17 +394,16 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
          }
       }
    }
-   for (int ii = 1; ii < matches.size(); ii++) {
+   for (unsigned int ii = 1; ii < matches.size(); ii++) {
       if ((matches[ii - 1].length > 4) && (matches[ii].length <= (matches[ii - 1].length - 1))) {
          matches[ii].length = matches[ii - 1].length - 1;
          matches[ii].distance = matches[ii - 1].distance;
       }
    }
 
-   for (int ii = 0; ii < matches.size(); ii++) {
+   for (unsigned int ii = 0; ii < matches.size(); ii++) {
       //printf("MATCH_NEW:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
    }
 
 
 }
-
