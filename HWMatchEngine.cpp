@@ -2,398 +2,344 @@
 #include <iostream>
 
 #include "matchlz4.h"
+#include "HWMatchEngine.h"
 
 #define CHUNKSIZE  4096
 #define MINMLENGHT 4
 #define NB_BYTE    8
 #define NB_CELL    (CHUNKSIZE/NB_BYTE)
 
-struct Matchstruct
+void match_cell_model::init()
 {
-   bool valid;
-   int  pos;
-   int  offset;
-   int  length;
-};
+    large_counter = 0;
+    for (int ii = 0; ii < NB_BYTE; ii++)
+    {
+        small_counter[ii] = 0;
+        large_count_status[ii] = 0;
+        data[ii] = 0;
+        history_reg[ii].valid = 0;
+        for (int jj = 0; jj < NB_BYTE; jj++)
+        {
+        comparator[ii][jj] = 0;
+        }
+    }
+    for (int ii = 0; ii < 2 * NB_BYTE - 1; ii++)
+        history[ii].valid = 0;
+}
 
-struct History
+void match_cell_model::loadDataHistory(unsigned char* data_in, bool last_data_in, History* history_in, History* history_out)
 {
-   bool valid;
-   unsigned char history;
-};
 
-class match_cell_model
+
+    for (int ii = NB_BYTE; ii < 2 * NB_BYTE - 1; ii++)
+    {
+        history[ii] = history_in[ii - NB_BYTE];
+    }
+    for (int ii = 0; ii < NB_BYTE; ii++)
+    {
+        history_reg_next[ii] = history_in[ii];
+    }
+    for (int ii = 0; ii < NB_BYTE; ii++)
+    {
+        history[ii] = history_reg[ii];
+    }
+
+    for (int ii = 0; ii < NB_BYTE; ii++) {
+        data[ii] = data_in[ii];
+        history_out[ii] = history_reg[ii];
+    }
+
+    last_data = last_data_in;
+
+}
+
+
+void match_cell_model::compareDataHisoty()
 {
-public:
+    if (verbose) printf("\nCOMPARATORS\n");
+    for (int pos = 0; pos < NB_BYTE; pos++)
+    {
+        for (int offset = 0; offset < NB_BYTE; offset++)
+        {
+        if (verbose) printf("(%d==%d)", data[pos], history[NB_BYTE - 1 + pos - offset].history);
+        if (verbose)printf(".%d", history[NB_BYTE - 1 + pos - offset].valid);
+        if ((data[pos] == history[NB_BYTE - 1 + pos - offset].history) && (history[NB_BYTE - 1 + pos - offset].valid) && !((pos == NB_BYTE - 1) && (last_data == 1)))
+            comparator[offset][pos] = 1;
+        else
+            comparator[offset][pos] = 0;
+        if (verbose) printf("-%d\t", comparator[offset][pos]);
+        }
+        if (verbose) printf("\n");
+    }
+    if (verbose) printf("\n");
+}
 
-
-   void init()
-   {
-      large_counter = 0;
-      for (int ii = 0; ii < NB_BYTE; ii++)
-      {
-         small_counter[ii] = 0;
-         large_count_status[ii] = 0;
-         data[ii] = 0;
-         history_reg[ii].valid = 0;
-         for (int jj = 0; jj < NB_BYTE; jj++)
-         {
-            comparator[ii][jj] = 0;
-         }
-      }
-      for (int ii = 0; ii < 2 * NB_BYTE - 1; ii++)
-         history[ii].valid = 0;
-   }
-
-   void loadDataHistory(unsigned char* data_in, bool last_data_in, History* history_in, History* history_out)
-   {
-
-
-      for (int ii = NB_BYTE; ii < 2 * NB_BYTE - 1; ii++)
-      {
-         history[ii] = history_in[ii - NB_BYTE];
-      }
-      for (int ii = 0; ii < NB_BYTE; ii++)
-      {
-         history_reg_next[ii] = history_in[ii];
-      }
-      for (int ii = 0; ii < NB_BYTE; ii++)
-      {
-         history[ii] = history_reg[ii];
-      }
-
-      for (int ii = 0; ii < NB_BYTE; ii++) {
-         data[ii] = data_in[ii];
-         history_out[ii] = history_reg[ii];
-      }
-
-      last_data = last_data_in;
-
-   }
-
-
-   void compareDataHisoty()
-   {
-      if (verbose) printf("\nCOMPARATORS\n");
-      for (int pos = 0; pos < NB_BYTE; pos++)
-      {
-         for (int offset = 0; offset < NB_BYTE; offset++)
-         {
-            if (verbose) printf("(%d==%d)", data[pos], history[NB_BYTE - 1 + pos - offset].history);
-            if (verbose)printf(".%d", history[NB_BYTE - 1 + pos - offset].valid);
-            if ((data[pos] == history[NB_BYTE - 1 + pos - offset].history) && (history[NB_BYTE - 1 + pos - offset].valid) && !((pos == NB_BYTE - 1) && (last_data == 1)))
-               comparator[offset][pos] = 1;
-            else
-               comparator[offset][pos] = 0;
-            if (verbose) printf("-%d\t", comparator[offset][pos]);
-         }
-         if (verbose) printf("\n");
-      }
-      if (verbose) printf("\n");
-   }
-
-   void updateSmallCounter()
-   {
-      if (verbose) printf("\nSMALL COUNTERS\n");
-      for (int pos = 0; pos < NB_BYTE; pos++)
-      {
-         match_list[pos].valid = 0;
-         match_list[pos].length = 0;
-         match_list[pos].offset = 0;
-         for (int offset = 0; offset < NB_BYTE; offset++)
-         {
-            if (comparator[offset][pos])
+void match_cell_model::updateSmallCounter()
+{
+    if (verbose) printf("\nSMALL COUNTERS\n");
+    for (int pos = 0; pos < NB_BYTE; pos++)
+    {
+        match_list[pos].valid = 0;
+        match_list[pos].length = 0;
+        match_list[pos].offset = 0;
+        for (int offset = 0; offset < NB_BYTE; offset++)
+        {
+        if (comparator[offset][pos])
+        {
+            if ((large_count_status[offset] != 1 || small_counter[offset] < NB_BYTE) && (small_counter[offset] != 2 * NB_BYTE - 1))
+                small_counter[offset] ++;
+        }
+        else
+        {
+            if ((small_counter[offset] >= 4) && (match_list[pos].length < small_counter[offset]) && !(large_count_status[match_list[pos].offset] && !large_count_status[offset]))
             {
-               if ((large_count_status[offset] != 1 || small_counter[offset] < NB_BYTE) && (small_counter[offset] != 2 * NB_BYTE - 1))
-                  small_counter[offset] ++;
+                match_list[pos].valid = 1;
+                match_list[pos].length = small_counter[offset];
+                match_list[pos].offset = offset;
+                match_list[pos].pos = pos;
             }
-            else
-            {
-               if ((small_counter[offset] >= 4) && (match_list[pos].length < small_counter[offset]) && !(large_count_status[match_list[pos].offset] && !large_count_status[offset]))
-               {
-                  match_list[pos].valid = 1;
-                  match_list[pos].length = small_counter[offset];
-                  match_list[pos].offset = offset;
-                  match_list[pos].pos = pos;
-               }
-               small_counter[offset] = 0;
-               //large_count_status[offset] = 0;
-            }
-            if (verbose) printf(" %d", small_counter[offset]);
-         }
-         if (verbose) printf("\n");
-      }
-      if (verbose) printf("\n");
-   }
+            small_counter[offset] = 0;
+            //large_count_status[offset] = 0;
+        }
+        if (verbose) printf(" %d", small_counter[offset]);
+        }
+        if (verbose) printf("\n");
+    }
+    if (verbose) printf("\n");
+}
 
-   void updateLargeCounterAndStatus()
-   {
+void match_cell_model::updateLargeCounterAndStatus()
+{
 
-      bool candidate_large_count_status[NB_BYTE];
+    bool candidate_large_count_status[NB_BYTE];
 
-      for (int offset = 0; offset < NB_BYTE; offset++)
-      {
-         if (small_counter[offset] >= NB_BYTE)
-            candidate_large_count_status[offset] = 1;
-         else
-            candidate_large_count_status[offset] = 0;
-      }
+    for (int offset = 0; offset < NB_BYTE; offset++)
+    {
+        if (small_counter[offset] >= NB_BYTE)
+        candidate_large_count_status[offset] = 1;
+        else
+        candidate_large_count_status[offset] = 0;
+    }
 
-      bool not_completed = 0;
-      // Check if all active LCS has been de-activated (Look for completion of large sequence)
-      for (int offset = 0; offset < NB_BYTE; offset++)
-      {
-         if ((large_count_status[offset]) && (candidate_large_count_status[offset]))
-         {
-            not_completed = 1;
-         }
-      }
+    bool not_completed = 0;
+    // Check if all active LCS has been de-activated (Look for completion of large sequence)
+    for (int offset = 0; offset < NB_BYTE; offset++)
+    {
+        if ((large_count_status[offset]) && (candidate_large_count_status[offset]))
+        {
+        not_completed = 1;
+        }
+    }
 
 
 
-      if (not_completed == 0) // Completed!!!
-      {
-         for (int offset = 0; offset < NB_BYTE; offset++)
-         {
+    if (not_completed == 0) // Completed!!!
+    {
+        for (int offset = 0; offset < NB_BYTE; offset++)
+        {
+        if (verbose) printf("%d=>", large_count_status[offset]);
+        large_count_status[offset] = candidate_large_count_status[offset];
+        if (verbose) printf("%d - ", large_count_status[offset]);
+        }
+        if (verbose) printf("\n");
+        large_counter = 0;
+    }
+    else
+    {
+        for (int offset = 0; offset < NB_BYTE; offset++)
+        {
             if (verbose) printf("%d=>", large_count_status[offset]);
-            large_count_status[offset] = candidate_large_count_status[offset];
+            if (candidate_large_count_status[offset]==0)
+            large_count_status[offset] = 0;
             if (verbose) printf("%d - ", large_count_status[offset]);
-         }
-         if (verbose) printf("\n");
-         large_counter = 0;
-      }
-      else
-      {
-          for (int offset = 0; offset < NB_BYTE; offset++)
-          {
-              if (verbose) printf("%d=>", large_count_status[offset]);
-              if (candidate_large_count_status[offset]==0)
-                large_count_status[offset] = 0;
-              if (verbose) printf("%d - ", large_count_status[offset]);
-          }
-          if (verbose) printf("\n");
-          large_counter++;
-      }
+        }
+        if (verbose) printf("\n");
+        large_counter++;
+    }
 
 
-   }
+}
 
-   void findLargeMatch()
-   {
-      large_match.valid = 0;
-      large_match.length = 0;
-
-      for (int pos = 0; pos < NB_BYTE; pos++)
-      {
-         if ((match_list[pos].valid) && (large_count_status[match_list[pos].offset]) && (match_list[pos].length>=NB_BYTE)) // Large Match Candidate
-         {
-            if (verbose) printf("LM candidate: %d length=%d pos=%d\n", pos, match_list[pos].length, match_list[pos].pos);
-            if (large_match.length < (match_list[pos].length + match_list[pos].pos))
-            {
-               if (verbose) printf("PASSING LM candidate: %d length=%d pos=%d\n", pos, match_list[pos].length, match_list[pos].pos);
-               large_match.valid = 1;
-               large_match.length = match_list[pos].length + match_list[pos].pos;
-               large_match.offset = match_list[pos].offset;
-               large_match.pos = match_list[pos].pos;
-            }
-         }
-      }
-      // Update length
-      large_match.length = large_match.length + (large_counter * NB_BYTE);
-   }
-
-   void processClock()
-   {
-      compareDataHisoty();
-      updateSmallCounter();
-      findLargeMatch();
-      updateLargeCounterAndStatus();
-
-      for (int ii = 0; ii < NB_BYTE; ii++)
-      {
-         history_reg[ii] = history_reg_next[ii];
-      }
-   }
-
-   Matchstruct getMatch(int pos)
-   {
-      return match_list[pos];
-   }
-
-   Matchstruct getLargeMatch()
-   {
-      return large_match;
-   }
-
-   int  small_counter[NB_BYTE];
-   bool large_count_status[NB_BYTE];
-   int  large_counter;
-   unsigned char data[NB_BYTE];
-   History history[NB_BYTE * 2 - 1];
-   History history_reg[NB_BYTE];
-   History history_reg_next[NB_BYTE];
-   bool comparator[NB_BYTE][NB_BYTE];
-   Matchstruct match_list[NB_BYTE];
-   Matchstruct large_match;
-   bool last_data = 0;
-   bool verbose = 0;
-
-};
-
-class match_detection_model
+void match_cell_model::findLargeMatch()
 {
-public:
+    large_match.valid = 0;
+    large_match.length = 0;
 
-   void init()
-   {
-      for (int ii = 0; ii < CHUNKSIZE; ii++)
-      {
-         matchList[ii].valid = 0;
-         matchList[ii].length = 0;
-         matchList[ii].offset = 0;
-         matchList[ii].pos = 0;
-      }
-      cycle = 0;
-
-      for (int cell = 0; cell < NB_CELL; cell++)
-      {
-         match_cell[cell].init();
-      }
-
-      match_cell[0].verbose = 0;
-   }
-
-   void loadData(unsigned char* data)
-   {
-      for (int ii = 0; ii < NB_BYTE; ii++)
-      {
-         input_string[ii] = data[ii];
-      }
-   }
-
-   void processCycle()
-   {
-
-      for (int ii = 0; ii < NB_BYTE; ii++)
-      {
-         current_history[ii].history = input_string[ii];
-         current_history[ii].valid = 1;
-      }
-
-
-      for (int cell = 0; cell < NB_CELL; cell++)
-      {
-         match_cell[cell].loadDataHistory(input_string, (cycle == NB_CELL - 1), current_history, next_history);
-         for (int ii = 0; ii < NB_BYTE; ii++) current_history[ii] = next_history[ii];
-      }
-
-      for (int pos = 0; pos < NB_BYTE; pos++)
-      {
-         standard_match[pos].valid = 0;
-         standard_match[pos].length = 0;
-      }
-      large_match.valid = 0;
-      large_match.length = 0;
-
-      for (int cell = 0; cell < NB_CELL; cell++)
-      {
-         match_cell[cell].processClock();
-
-         for (int pos = 0; pos < NB_BYTE; pos++)
-         {
-            match = match_cell[cell].getMatch(pos);
-
-            if (match.valid)
-            {
-               //if (verbose) printf("UNFILTERED SMALL  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
-            }
-
-            if (match.valid && standard_match[pos].length < match.length)
-            {
-               standard_match[pos].valid = 1;
-               standard_match[pos].offset = match.offset + (NB_BYTE * cell);
-               standard_match[pos].length = match.length;
-               standard_match[pos].pos = match.pos + (NB_BYTE * cycle);
-            }
-
-         }
-
-         match = match_cell[cell].getLargeMatch();
-
-         if (match.valid)
-         {
-            //if (verbose) printf("UNFILTERED LARGE  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
-         }
-
-         if (match.valid && large_match.length < match.length)
-         {
+    for (int pos = 0; pos < NB_BYTE; pos++)
+    {
+        if ((match_list[pos].valid) && (large_count_status[match_list[pos].offset]) && (match_list[pos].length>=NB_BYTE)) // Large Match Candidate
+        {
+        if (verbose) printf("LM candidate: %d length=%d pos=%d\n", pos, match_list[pos].length, match_list[pos].pos);
+        if (large_match.length < (match_list[pos].length + match_list[pos].pos))
+        {
+            if (verbose) printf("PASSING LM candidate: %d length=%d pos=%d\n", pos, match_list[pos].length, match_list[pos].pos);
             large_match.valid = 1;
-            large_match.offset = match.offset + (NB_BYTE * cell);
-            large_match.length = match.length;
-            large_match.pos = match.pos + (NB_BYTE * cycle);
-         }
-      }
+            large_match.length = match_list[pos].length + match_list[pos].pos;
+            large_match.offset = match_list[pos].offset;
+            large_match.pos = match_list[pos].pos;
+        }
+        }
+    }
+    // Update length
+    large_match.length = large_match.length + (large_counter * NB_BYTE);
+}
 
-      // Append Matches to matchlist
-      for (int pos = 0; pos < NB_BYTE; pos++)
-      {
-         if (standard_match[pos].valid)
-         {
-            if (verbose) printf("SMALL MATCH: pos:%d offset:%d length:%d\n", standard_match[pos].pos, standard_match[pos].offset, standard_match[pos].length);
-            matchList[cycle * NB_BYTE + pos] = standard_match[pos];
-         }
-      }
-      if (large_match.valid)
-      {
-         if (verbose) printf("LARGE  MATCH: pos:%d offset:%d length:%d\n", large_match.pos, large_match.offset, large_match.length);
-         matchList[large_match.pos] = large_match;
-      }
+void match_cell_model::processClock()
+{
+    compareDataHisoty();
+    updateSmallCounter();
+    findLargeMatch();
+    updateLargeCounterAndStatus();
 
-      cycle++;
-      if (cycle > 0 && cycle < 0) {
-          printf("CYCLE: %d\n", cycle);
-          verbose = 1;
-          match_cell[1].verbose = 1;
-      }
-      else {
-          verbose = 0;
-          match_cell[1].verbose = 0;
-      }
+    for (int ii = 0; ii < NB_BYTE; ii++)
+    {
+        history_reg[ii] = history_reg_next[ii];
+    }
+}
 
-   }
+Matchstruct match_cell_model::getMatch(int pos)
+{
+    return match_list[pos];
+}
 
-   Matchstruct* getStandardMatch()
-   {
-      return standard_match;
-   }
+Matchstruct match_cell_model::getLargeMatch()
+{
+    return large_match;
+}
 
-   Matchstruct* getLargeMatch()
-   {
-      return &large_match;
-   }
 
-   Matchstruct* getMatchList()
-   {
-      return matchList;
-   }
+void match_detection_model::init()
+{
+    for (int ii = 0; ii < CHUNKSIZE; ii++)
+    {
+        matchList[ii].valid = 0;
+        matchList[ii].length = 0;
+        matchList[ii].offset = 0;
+        matchList[ii].pos = 0;
+    }
+    cycle = 0;
 
-   bool verbose = 0;
-   Matchstruct matchList[CHUNKSIZE];
-   int cycle = 0;
+    for (int cell = 0; cell < NB_CELL; cell++)
+    {
+        match_cell[cell].init();
+    }
 
-   Matchstruct match;
-   Matchstruct standard_match[NB_BYTE];
-   Matchstruct large_match;
+    match_cell[0].verbose = 0;
+}
 
-   match_cell_model match_cell[NB_CELL];
+void match_detection_model::loadData(unsigned char* data)
+{
+    for (int ii = 0; ii < NB_BYTE; ii++)
+    {
+        input_string[ii] = data[ii];
+    }
+}
 
-   History  history[CHUNKSIZE];
-   History  current_history[NB_BYTE];
-   History  next_history[NB_BYTE];
+void match_detection_model::processCycle()
+{
 
-   unsigned char input_string[NB_BYTE];
+    for (int ii = 0; ii < NB_BYTE; ii++)
+    {
+        current_history[ii].history = input_string[ii];
+        current_history[ii].valid = 1;
+    }
 
-};
+
+    for (int cell = 0; cell < NB_CELL; cell++)
+    {
+        match_cell[cell].loadDataHistory(input_string, (cycle == NB_CELL - 1), current_history, next_history);
+        for (int ii = 0; ii < NB_BYTE; ii++) current_history[ii] = next_history[ii];
+    }
+
+    for (int pos = 0; pos < NB_BYTE; pos++)
+    {
+        standard_match[pos].valid = 0;
+        standard_match[pos].length = 0;
+    }
+    large_match.valid = 0;
+    large_match.length = 0;
+
+    for (int cell = 0; cell < NB_CELL; cell++)
+    {
+        match_cell[cell].processClock();
+
+        for (int pos = 0; pos < NB_BYTE; pos++)
+        {
+        match = match_cell[cell].getMatch(pos);
+
+        if (match.valid)
+        {
+            //if (verbose) printf("UNFILTERED SMALL  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
+        }
+
+        if (match.valid && standard_match[pos].length < match.length)
+        {
+            standard_match[pos].valid = 1;
+            standard_match[pos].offset = match.offset + (NB_BYTE * cell);
+            standard_match[pos].length = match.length;
+            standard_match[pos].pos = match.pos + (NB_BYTE * cycle);
+        }
+
+        }
+
+        match = match_cell[cell].getLargeMatch();
+
+        if (match.valid)
+        {
+        //if (verbose) printf("UNFILTERED LARGE  MATCH: pos:%d offset:%d length:%d\n", match.pos + (NB_BYTE * cycle), match.offset + (NB_BYTE * cell), match.length);
+        }
+
+        if (match.valid && large_match.length < match.length)
+        {
+        large_match.valid = 1;
+        large_match.offset = match.offset + (NB_BYTE * cell);
+        large_match.length = match.length;
+        large_match.pos = match.pos + (NB_BYTE * cycle);
+        }
+    }
+
+    // Append Matches to matchlist
+    for (int pos = 0; pos < NB_BYTE; pos++)
+    {
+        if (standard_match[pos].valid)
+        {
+        if (verbose) printf("SMALL MATCH: pos:%d offset:%d length:%d\n", standard_match[pos].pos, standard_match[pos].offset, standard_match[pos].length);
+        matchList[cycle * NB_BYTE + pos] = standard_match[pos];
+        }
+    }
+    if (large_match.valid)
+    {
+        if (verbose) printf("LARGE  MATCH: pos:%d offset:%d length:%d\n", large_match.pos, large_match.offset, large_match.length);
+        matchList[large_match.pos] = large_match;
+    }
+
+    cycle++;
+    if (cycle > 0 && cycle < 0) {
+        printf("CYCLE: %d\n", cycle);
+        verbose = 1;
+        match_cell[1].verbose = 1;
+    }
+    else {
+        verbose = 0;
+        match_cell[1].verbose = 0;
+    }
+
+}
+
+Matchstruct* match_detection_model::getStandardMatch()
+{
+    return standard_match;
+}
+
+Matchstruct* match_detection_model::getLargeMatch()
+{
+    return &large_match;
+}
+
+Matchstruct* match_detection_model::getMatchList()
+{
+    return matchList;
+}
 
 
 void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock)

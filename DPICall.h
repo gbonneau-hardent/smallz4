@@ -21,7 +21,7 @@ class DPICall
 
       virtual chandle CreateContext()                                                                                                         = 0;
       virtual void DestroyContext()                                                                                                           = 0;
- 
+
       virtual int32_t ParseOption(int argc, const char* argv[], ContextLZ4& contextLZ4)                                                       = 0;
       virtual int32_t InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, uint64_t chunkIndex)                                  = 0;
       virtual int32_t InitDecompression(ContextLZ4& lz4Context, LZ4DecompReader& lz4DecompReader, uint64_t chunkIndex)                        = 0;
@@ -38,29 +38,27 @@ class DPICall
 
 };
 
-extern "C" int32_t comp_c_model(int argc, const char* argv[]);
+//extern "C" int32_t comp_c_model(int argc, const char* argv[]);
 
 #else
 
-#include <stdint.h>
+// #include <stdint.h>
 
 
-chandle CreateContext();
-chandle DestroyContext(chandle in_corpuslz4);
+// chandle CreateContext();
+// chandle DestroyContext(chandle in_corpuslz4);
 
-int32_t ParseOption(int argc, const char* argv[], chandle corpusLZ4);
-int32_t InitCompression(chandle corpusLZ4, uint64_t chunkIndex);
-int32_t InitDecompression(chandle corpusLZ4, uint64_t chunkIndex);
-int32_t InitReader(chandle corpusLZ4, chandle compFile);
-int32_t Compress(chandle corpusLZ4, uint32_t chunckIndex);
-int32_t Decompress(chandle corpusLZ4, uint32_t chunckIndex);
-int32_t DumpFileStat(chandle corpusLZ4);
-int32_t DumpChunkStat(chandle corpusLZ4, uint32_t chunckIndex);
-int32_t Close(chandle corpusLZ4);
+// int32_t ParseOption(int argc, const char* argv[], chandle corpusLZ4);
+// int32_t InitCompression(chandle corpusLZ4, uint64_t chunkIndex);
+// int32_t InitDecompression(chandle corpusLZ4, uint64_t chunkIndex);
+// int32_t InitReader(chandle corpusLZ4, chandle compFile);
+// int32_t Compress(chandle corpusLZ4, uint32_t chunckIndex);
+// int32_t Decompress(chandle corpusLZ4, uint32_t chunckIndex);
+// int32_t DumpFileStat(chandle corpusLZ4);
+// int32_t DumpChunkStat(chandle corpusLZ4, uint32_t chunckIndex);
+// int32_t Close(chandle corpusLZ4);
 
-chandle getNextFile(chandle corpusLZ4);
+// chandle getNextFile(chandle corpusLZ4);
 
 #endif
 #endif
-
-
