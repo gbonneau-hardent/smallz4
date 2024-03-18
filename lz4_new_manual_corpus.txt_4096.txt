@@ -1,7 +1,0 @@
-# Source File Name = manual_corpus.txt
-#
-# Memory Chunck Size = 4096
-
-# File Compressed : .\data\silicia_corpus\xml
-# Statistic of compression loss with modified algorithm .\data\silicia_corpus\xml
-#
