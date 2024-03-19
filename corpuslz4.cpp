@@ -123,7 +123,7 @@ static void decompBytesToOut(const unsigned char* data, unsigned int numBytes, v
 }
 
 
-constexpr uint32_t lz4MaxExpand = 16;
+constexpr uint32_t lz4MaxExpand = 15;
 
 
 chandle CorpusLZ4::CreateContext() { 
@@ -149,6 +149,11 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
 {
    std::unique_ptr<cxxopts::Options> allocated(new cxxopts::Options(argv[0], "Simulation application to compute the minimum number of trials window n needed to reach the minimum observations o having probability p\n\nExample command line arguments: -p .00025844 -o 4 -t 0.95 -c .00000002166\n"));
    auto& options = *allocated;
+
+   contextLZ4.command = "";
+   for (uint32_t i = 1; i < argc; i++) {
+      contextLZ4.command = contextLZ4.command + argv[i] + " ";
+   }
 
    options.set_width(120)
       .set_tab_expansion()
@@ -298,6 +303,7 @@ int32_t CorpusLZ4::InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Rea
       exit(-4);
    }
 
+   lz4Context.statFile << "# Command Line: " << lz4Context.command << std::endl;
    lz4Context.statFile << "# Source File Name = " << lz4Reader.corpusName << std::endl << "#" << std::endl;
    lz4Context.statFile << "# Memory Chunck Size = " << lz4Context.chunkSize[chunkIndex] << std::endl << "#" << std::endl;
    lz4Context.statFileDist << "# Source File Name = " << lz4Reader.corpusName << std::endl << "#" << std::endl;
@@ -662,6 +668,17 @@ std::shared_ptr<std::ifstream> CorpusLZ4::getNextFile(LZ4CompReader & lz4Reader)
 }
 
 
+void CorpusLZ4::dumpDiff(const std::shared_ptr<char>& compBuffer, const std::shared_ptr<char>& decompBuffer, uint32_t chunkSize) const
+{
+   char * orig = compBuffer.get();
+   char * hw = decompBuffer.get();
+
+   for (int ii = 0; ii < 4096; ii++) {
+      if (orig[ii] != hw[ii])
+         std::cout << "i = " << ii << ", orig[i] = " << orig[ii] << ", hw[i] = " << hw[ii] << "(orig[i] != hw[i]) : " << (orig[ii] != hw[ii]) << std::endl;
+   }
+}
+
 int32_t simulation(int argc, const char* argv[])
 {
    CorpusLZ4 corpusLZ4;
@@ -696,20 +713,10 @@ int32_t simulation(int argc, const char* argv[])
             lz4DecompReader.decompPos  = 0;
 
             corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
-
             int retCmp = std::strncmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
+
             if (retCmp != 0) {
-                char* orig;
-                char* hw;
-
-                orig = lz4Reader.fileBuffer.get();
-                hw = lz4DecompReader.decompBuffer.get();
-
-                for (int ii = 0; ii < 4096; ii++)
-                {
-                    if (orig[ii] != hw[ii]) printf("%d - %d:%d %d\n", ii, orig[ii], hw[ii], (orig[ii] != hw[ii]));
-                }
-
+               corpusLZ4.dumpDiff(lz4Reader.fileBuffer, lz4DecompReader.decompBuffer, contextLZ4.chunkSize[chunckIndex]);
                std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
                exit(-2);
             }

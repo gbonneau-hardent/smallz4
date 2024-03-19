@@ -27,6 +27,7 @@ typedef struct ContextLZ4
 
    std::string corpusSet;
    std::string fileName;
+   std::string command;
    std::vector<uint32_t> chunkSize;
    std::map <std::string, uint64_t> ratioStat;
    std::map<uint32_t, uint32_t> compLossStatistic;
@@ -81,6 +82,8 @@ public:
    virtual int32_t Close(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, LZ4DecompReader& lz4DecompReader);
 
    virtual std::shared_ptr<std::ifstream> getNextFile(LZ4CompReader& lz4Reader);
+
+   void dumpDiff(const std::shared_ptr<char>& compBuffer, const std::shared_ptr<char>& decompBuffer, uint32_t chunkSize) const;
 
    std::shared_ptr<ContextLZ4> getContextlz4()     { return ptrContextLZ4; }
    std::shared_ptr<LZ4CompReader> getComplz4()     { return ptrLZ4Reader; }
