@@ -1,12 +1,20 @@
 
 reset session
 set encoding utf8
-cd 'C:\Users\gbonneau\git\smallz4'
-corpusFile = "lz4_silicia_corpus.txt_4096.csv"
-stats corpusFile nooutput
-numRecord = STATS_records
-chunkSize = numRecord - 15.0
-ymax = chunkSize + int(chunkSize / 20)
+
+ARGC = 3
+ARG1 = 'C:\Users\gbonneau\git\smallz4'
+ARG2 = "lz4_silicia_corpus.txt_4096.csv"
+ARG3 = "lz4_silicia_corpus.txt_4096.csv"
+
+cd ARG1
+
+array corpusFiles[ARGC-1]
+corpusFiles[1] = ARG2
+corpusFiles[2] = ARG3
+
+ymax = 0
+bias = 0
 
 fmt = "% 14s :% 6.2f"
 format = fmt . "\n".fmt . "\n".fmt . "\n".fmt . "\n".fmt . "\n".fmt
@@ -23,18 +31,25 @@ array xposArr[5]
 
 do for [i=1:2] {
 
+   stats corpusFiles[i] nooutput
+   numRecord = STATS_records
+   chunkSize = numRecord - 15.0
+   maxsize =  chunkSize + int(chunkSize / 20)
+
+   ymax = ymax < maxsize ? maxsize : ymax
+
    set datafile separator comma
 
    array M[numRecord]
    array N[numRecord]
    
-   stats corpusFile using (M[int($0 + 1)] = $1) name "M" nooutput
-   stats corpusFile using (N[int($0 + 1)] = $2) name "N" nooutput
+   stats corpusFiles[i] using (M[int($0 + 1)] = $1) name "M" nooutput
+   stats corpusFiles[i] using (N[int($0 + 1)] = $3) name "N" nooutput
 
    array M_x_N[numRecord]
    array Bias_M_x_N[numRecord]
    
-   bias = 2048.0
+   bias = chunkSize / 2.0
    
    stats N using (M_x_N[int($0 + 1)] = N[int($0 + 1)] * M[int($0 + 1)]) name "M_x_N" nooutput
    stats N using (M[$0 + 1] <= bias ? N[int($0 + 1)] * M[int($0 + 1)] : N[int($0 + 1)] * chunkSize) name "M_x_N_B" nooutput
@@ -134,9 +149,17 @@ do for [i=1:2] {
    
    stats $Data name "D" nooutput
 
+#preliminary linear formula for Banwdith value. Wanted: 10 -> 4095, 2 -> 512
+# y = slope*(x) + origin -> origin = y - slope*(x)
+# bandwidth is y
+
+   slope = (10.0 - 2.0)/(4096.0 - 512)
+   origin = 10 - slope*4096
+   chunkBandwidth = slope*chunkSize + origin
+
    set table $kdensity
    set samples(numSample - 1)
-   plot $Data using 2:(1) smooth kdensity bandwidth 10
+   plot $Data using 2:(1) smooth kdensity bandwidth chunkBandwidth
    unset table
      
    set datafile separator whitespace
@@ -153,6 +176,8 @@ do for [i=1:2] {
    xposArr[i] = xpos
    xpos = xpos + STATS_max_y + 10
 
+   boxsize = STATS_max_y * 0.03
+
    infostat[i] = sprintf(format, "Mean", compMeanRatio, "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
    infostat[i] = bias == 0 ? infostat[i] : sprintf(format, "Mean", compMeanRatio, "Mean (Bias)", compBiasMeanRatio, "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
 
@@ -167,10 +192,18 @@ set ytics nomirror
 unset key
 
 set style fill solid 0.7
-set boxwidth 2.5
+set boxwidth boxsize
 
-set palette defined(0.0 'web-green', .5 'goldenrod', 0.8 'red', 1.0 'black')
-set cbtics("0.98" 1.0, "2.0" 0.5, "5.0" .2, "10.0" .1, "\U+221E" 0.0125)
+intMaxColor = int(100.0*(chunkSize / numRecord))
+maxColor = intMaxColor / 100.0
+print intMaxColor
+print maxColor
+sprintf(%4f, maxColor)
+
+set palette defined ( 0.0 'web-green', .5 'goldenrod', 0.8 'red', maxColor 'black')
+set colorbox invert
+set cbrange[0:maxColor]
+set cbtics (sprintf("%2.2f", maxColor) maxColor, "2.0" 0.5, "5.0" .2, "10.0" .1, "\U+221E" 0.0)
 
 set style textbox 2 opaque fc rgb 0xb0b0b0 margin 4, 4
 #set label 10 infostat[idx] at graph .95, 1.0 right boxed bs 2 front font "Courier New"
