@@ -606,7 +606,12 @@ int32_t CorpusLZ4::DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reade
 
    uint64_t allRemainer = 0;
    uint64_t remainer = 0;
-   uint64_t divider = 4096 / contextLZ4.chunkSize[chunckIndex];
+   uint64_t divider = 1;
+   uint64_t numChunk = contextLZ4.numChunk;
+
+   while (numChunk/divider > 64000) {
+      divider++;
+   }
 
    //for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
    //
@@ -758,12 +763,15 @@ int32_t simulation(int argc, const char* argv[])
             corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
             int retCmp = std::strncmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
 
+
+
             if (retCmp != 0) {
                corpusLZ4.dumpDiff(lz4Reader.fileBuffer, lz4DecompReader.decompBuffer, contextLZ4.chunkSize[chunckIndex]);
                std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
                exit(-2);
             }
          }
+         contextLZ4.numChunk = numLoop;
          corpusLZ4.DumpFileStat(contextLZ4);
       }
       corpusLZ4.DumpChunkStat(contextLZ4, lz4Reader, lz4DecompReader, chunckIndex);
