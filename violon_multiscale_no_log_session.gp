@@ -9,15 +9,15 @@ cd ARG1
 corpusTitle = "Random Corpus"
 
 if(ARGC != 2) {
-    ARG6 = "lz4_silicia_corpus.txt_4096.csv"
-    ARG5 = "lz4_silicia_corpus.txt_2048.csv"
-    ARG4 = "lz4_silicia_corpus.txt_1024.csv"
-    ARG3 = "lz4_silicia_corpus.txt_512.csv"
-    ARG2 = "lz4_silicia_corpus.txt_256.csv"
+    ARG6 = "lz4_random.txt_4096.csv"
+    ARG5 = "lz4_random.txt_2048.csv"
+    ARG4 = "lz4_random.txt_1024.csv"
+    ARG3 = "lz4_random.txt_512.csv"
+    ARG2 = "lz4_random.txt_256.csv"
 }
 
 if(ARGC == 2) {
-    ARG6 = "lz4_silicia_corpus.txt_4096.csv"      
+    ARG2 = "lz4_silicia_corpus.txt_4096.csv"      
 }
 
 array corpusFiles[5]
@@ -246,7 +246,7 @@ do for[i=1:ARGC-1] {
     if((ARGC-1) > 2) {
         set object 11+i*2 circle at first xposArr[i],violinPos[i]+(arrChunkSize[i]/compMeanRatio[i]) radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
     }
-    set label 11+i*2+1 sprintf("%s", corpusTitle)."\nChunk Size = ".sprintf("%d", arrChunkSize[i])."\nComp Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], violinPos[i] center font ',9' front offset character 0,3
+    set label 11+i*2+1 sprintf("%s", corpusTitle)."\nChunk Size = ".sprintf("%d", arrChunkSize[i])."\nComp Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], violinPos[i]+posMin[i] center font ',9' front offset character 0,3
 }
 
 set yrange[ymax:0]
@@ -280,5 +280,5 @@ if((ARGC-1) > 2) {
 }
 else {
    plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrChunkSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrChunkSize[j]) with vectors nohead lc palette z, \
-   for[j=1:ARGC-1] '+' every ::::0 using (xposArr[j]):(violinPos[j]+lowQuartileValue[j]):(posMin[i]):(violinPos[j]+posMax[j]):(violinPos[j]+upQuartileValue[j]) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars
+   for[j=1:ARGC-1] '+' every ::::0 using (xposArr[j]):(violinPos[j]+lowQuartileValue[j]):(violinPos[j]+posMin[j]):(violinPos[j]+posMax[j]):(violinPos[j]+upQuartileValue[j]) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars
 }
