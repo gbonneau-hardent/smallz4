@@ -1,31 +1,25 @@
 
 reset session
 set encoding utf8
+set term qt size 1010,1000
+set term png enhanced truecolor size 1010,1000
 
-ARGC = 6
+ARGC = 2
 ARG1 = 'C:\Users\gbonneau\git\smallz4'
+ARG2 = "lz4_enwik9.txt_4096.csv"
+
+set output ARG2.sprintf(".png")
+
 cd ARG1
 
-corpusTitle = "Random Corpus"
+corpusTitle = "Wikipedia Corpus"
+array corpusFiles[ARGC-1]
 
-if(ARGC != 2) {
-    ARG6 = "lz4_silicia_corpus.txt_4096.csv"
-    ARG5 = "lz4_silicia_corpus.txt_2048.csv"
-    ARG4 = "lz4_silicia_corpus.txt_1024.csv"
-    ARG3 = "lz4_silicia_corpus.txt_512.csv"
-    ARG2 = "lz4_silicia_corpus.txt_256.csv"
+numARG = (9 < ARGC) ? 8 : ARGC-1
+
+do for [i=1:numARG] {
+  eval sprintf("corpusFiles[%d] = ARG%d", i, i+1);
 }
-
-if(ARGC == 2) {
-    ARG6 = "lz4_silicia_corpus.txt_4096.csv"      
-}
-
-array corpusFiles[5]
-corpusFiles[1] = ARG2
-corpusFiles[2] = ARG3
-corpusFiles[3] = ARG4
-corpusFiles[4] = ARG5
-corpusFiles[5] = ARG6
 
 ymax = 0
 maxChunkSize = 0
@@ -38,7 +32,7 @@ format = bias == 0 ? format : format . "\n".fmt
 # Harcoded for now
 
 xpos = 10
-if(ARGC != 2) {
+if(ARGC != 2)) {
     set xrange[0:]
 }
 if(ARGC != 2) {
@@ -208,7 +202,7 @@ do for [i=1:ARGC-1] {
       infostat[i] = bias == 0 ? infostat[i] : sprintf(format, "Mean", compMeanRatio[i], "Mean (Bias)", compBiasMeanRatio, "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
 
       set style textbox 2 opaque fc rgb 0xb0b0b0 margin 4,4
-      set label 30 infostat[i] at graph .95,1.0 right boxed bs 2 front font "Courier New"
+      set label 30 infostat[i] at graph .95,1.0 right boxed bs 2 front font "10,Courier New"
    }
 }
 
@@ -222,8 +216,6 @@ set boxwidth boxsize[1]
 
 intMaxColor = int(100.0*(maxChunkSize /( maxChunkSize+15)))
 maxColor = intMaxColor / 100.0
-print intMaxColor
-print maxColor
 
 set palette defined ( 0.0 'web-green', .5 'goldenrod', 0.8 'red', maxColor 'black')
 set colorbox invert
@@ -246,7 +238,7 @@ do for[i=1:ARGC-1] {
     if((ARGC-1) > 2) {
         set object 11+i*2 circle at first xposArr[i],violinPos[i]+(arrChunkSize[i]/compMeanRatio[i]) radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
     }
-    set label 11+i*2+1 sprintf("%s", corpusTitle)."\nChunk Size = ".sprintf("%d", arrChunkSize[i])."\nComp Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], violinPos[i] center font ',9' front offset character 0,3
+    set label 11+i*2+1 sprintf("%s", corpusTitle)."\nChunk Size = ".sprintf("%d", arrChunkSize[i])."\nComp Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], violinPos[i] center font '10,Courier New' front offset character 0,3
 }
 
 set yrange[ymax:0]
