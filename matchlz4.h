@@ -11,8 +11,3 @@ typedef struct Match
    Distance distance;   // start of match
    char     character;  // character
 } Match;
-
-// write several bytes, see sendBytesToOut() in smallz4.cpp for a basic implementation
-typedef void   (*COMP_SEARCH_MATCH)(std::vector<Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock);
-
-
