@@ -1,0 +1,1 @@
+.\data\emotion_corpus\emotion.txt

@@ -17,7 +17,6 @@ typedef struct ContextLZ4
    uint32_t windowSize;
    uint32_t dataSize;
    uint64_t maxChunk;
-   uint64_t numChunk;
    uint32_t matchAlgo;
 
    double   threshold;

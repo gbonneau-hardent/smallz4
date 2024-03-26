@@ -2,30 +2,65 @@
 reset session
 set encoding utf8
 
-ARGC = 6
-ARG1 = 'C:\Users\gbonneau\git\smallz4'
+if(GPVAL_TERM eq 'qt') {
+    set term qt size 1010,1000
+    isQT = 1
+
+    corpusTitle = "Silesia Corpus"
+
+    ARGC = 6
+    ARG1 = 'C:\Users\gbonneau\git\smallz4'
+    
+    corpusTitle = "Random Corpus"
+    
+    if(ARGC != 2) {
+
+        ARG6 = "lz4_canterbury_corpus.txt_4096.csv"
+        ARG5 = "lz4_silicia_corpus.txt_4096.csv"    
+        ARG4 = "lz4_calgary_corpus.txt_4096.csv"
+        ARG3 = "lz4_enwik9.txt_4096.csv"
+        ARG2 = "lz4_random.txt_4096.csv"
+
+        //ARG6 = "lz4_enwik9.txt_4096.csv"
+        //ARG5 = "lz4_enwik9.txt_2048.csv"
+        //ARG4 = "lz4_enwik9.txt_1024.csv"
+        //ARG3 = "lz4_enwik9.txt_512.csv"
+        //ARG2 = "lz4_enwik9.txt_256.csv"
+
+    }
+    
+    if(ARGC == 2) {
+        ARG2 = "lz4_silicia_corpus.txt_4096.csv"      
+    }
+    print "Termninal QT"
+}
+else { 
+    set term 'png' enhanced truecolor size 1010,1000
+    isQT = 0
+
+    corpusTitle = "Silesia Corpus"
+
+    if(ARGC != 2) {
+        ARGC = 2
+        ARG1 = 'C:\Users\gbonneau\git\smallz4'
+        ARG2 = "lz4_silicia_corpus.txt_4096.csv"
+    }
+    set output ARG2.sprintf(".png")
+    print "Terminal PNG"
+}
+show terminal
+
+array corpusFiles[ARGC-1]
+array corpusNames[ARGC-1]
+
+numARG = (9 < ARGC) ? 8 : ARGC-1
+
+do for [i=1:numARG] {
+  eval sprintf("corpusFiles[%d] = ARG%d", i, i+1);
+  name = corpusFiles[i][5:]
+  corpusNames[i] = name[:strstrt(name, ".txt")-1]
+}
 cd ARG1
-
-corpusTitle = "Random Corpus"
-
-if(ARGC != 2) {
-    ARG6 = "lz4_random.txt_4096.csv"
-    ARG5 = "lz4_random.txt_2048.csv"
-    ARG4 = "lz4_random.txt_1024.csv"
-    ARG3 = "lz4_random.txt_512.csv"
-    ARG2 = "lz4_random.txt_256.csv"
-}
-
-if(ARGC == 2) {
-    ARG2 = "lz4_silicia_corpus.txt_4096.csv"      
-}
-
-array corpusFiles[5]
-corpusFiles[1] = ARG2
-corpusFiles[2] = ARG3
-corpusFiles[3] = ARG4
-corpusFiles[4] = ARG5
-corpusFiles[5] = ARG6
 
 ymax = 0
 maxChunkSize = 0
@@ -41,10 +76,10 @@ xpos = 10
 if(ARGC != 2) {
     set xrange[0:]
 }
-if(ARGC != 2) {
-   set title font ',13'
-   set title sprintf("%s Set", corpusTitle)
-}
+#if(ARGC != 2) {
+#   set title font ',13'
+#   set title sprintf("%s Set", corpusTitle)
+#}
 
 array arrChunkSize[5]
 array infostat[5]
@@ -246,7 +281,7 @@ do for[i=1:ARGC-1] {
     if((ARGC-1) > 2) {
         set object 11+i*2 circle at first xposArr[i],violinPos[i]+(arrChunkSize[i]/compMeanRatio[i]) radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
     }
-    set label 11+i*2+1 sprintf("%s", corpusTitle)."\nChunk Size = ".sprintf("%d", arrChunkSize[i])."\nComp Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], violinPos[i]+posMin[i] center font ',9' front offset character 0,3
+    set label 11+i*2+1 sprintf("%s", corpusNames[i])."\nChunk Size = ".sprintf("%d", arrChunkSize[i])."\nComp Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], violinPos[i]+posMin[i] center font ',9' front offset character 0,3
 }
 
 set yrange[ymax:0]

@@ -1,28 +1,84 @@
-
 reset session
 set encoding utf8
-set term qt size 1010,1000
-set term png enhanced truecolor size 1010,1000
 
-ARGC = 2
-ARG1 = 'C:\Users\gbonneau\git\smallz4'
-ARG2 = "lz4_enwik9.txt_4096.csv"
+isPngTerm = 0
+isColorbox = 0
+isXtics = 0
+isInfoTop = 0
+isPosBottom = 0
+isPosTop = 1
+isCurve  = 0
 
-set output ARG2.sprintf(".png")
+if(isPngTerm) {
+    set term 'png' enhanced truecolor size 1010,1000
+}
 
-cd ARG1
+if(GPVAL_TERM eq 'qt') {
+    set term qt size 1010,1000
+    isQT = 1
 
-corpusTitle = "Wikipedia Corpus"
+    corpusTitle = "Silesia Corpus"
+
+    ARGC = 6
+    ARG1 = 'C:\Users\gbonneau\git\smallz4'
+    
+    corpusTitle = "Random Corpus"
+    
+    if(ARGC != 2) {
+
+        #ARG6 = "lz4_canterbury_corpus.txt_4096.csv"
+        #ARG5 = "lz4_silicia_corpus.txt_4096.csv"    
+        #ARG4 = "lz4_calgary_corpus.txt_4096.csv"
+        #ARG3 = "lz4_enwik9.txt_4096.csv"
+        #ARG2 = "lz4_random.txt_4096.csv"
+
+        ARG6 = "lz4_enwik9.txt_4096.csv"
+        ARG5 = "lz4_pubmed_corpus.txt_4096.csv"
+        ARG4 = "lz4_github_corpus.txt_4096.csv"
+        ARG3 = "lz4_silicia_corpus_dickens.txt_4096.csv"
+        ARG2 = "lz4_silicia_corpus_din.txt_4096.csv"
+
+        #ARG4 = "lz4_Wikipedia Corpus.txt_4096.csv"
+        #ARG3 = "lz4_Wikipedia Corpus.txt_2048.csv"
+        #ARG2 = "lz4_Wikipedia Corpus.txt_1024.csv"
+    }
+    
+    if(ARGC == 2) {
+        ARG2 = "lz4_silicia_corpus.txt_4096.csv" 
+        ARG2 = "lz4_enwik9.txt_4096.csv"
+    }
+    print "Termninal QT"
+}
+else { 
+    set term 'png' enhanced truecolor size 1010,1000
+    isQT = 0
+
+    corpusTitle = "Silesia Corpus"
+
+    if(ARGC != 2) {
+        ARGC = 2
+        ARG1 = 'C:\Users\gbonneau\git\smallz4'
+        ARG2 = "lz4_silicia_corpus.txt_4096.csv"
+    }
+    set output ARG2.sprintf(".png")
+    print "Terminal PNG"
+}
+show terminal
+
 array corpusFiles[ARGC-1]
+array corpusNames[ARGC-1]
 
 numARG = (9 < ARGC) ? 8 : ARGC-1
 
 do for [i=1:numARG] {
   eval sprintf("corpusFiles[%d] = ARG%d", i, i+1);
+  name = corpusFiles[i][strstrt(corpusFiles[i], "lz4_")+4:]
+  corpusNames[i] = name[:strstrt(name, ".txt")-1]
 }
+cd ARG1
 
 ymax = 0
-maxChunkSize = 0
+maxBlockSize = 0
 bias = 0
 
 fmt = "% 14s :% 6.2f"
@@ -32,38 +88,35 @@ format = bias == 0 ? format : format . "\n".fmt
 # Harcoded for now
 
 xpos = 10
-if(ARGC != 2)) {
+if(ARGC != 2) {
     set xrange[0:]
 }
-if(ARGC != 2) {
-   set title font ',13'
-   set title sprintf("%s Set", corpusTitle)
-}
 
-array arrChunkSize[5]
-array infostat[5]
-array xposArr[5]
-array max_y[5]
-array boxsize[5]
-array compMeanRatio[5]
-array violinPos[5]
-array yscale[5]
-array medianValue[5]
-array lowQuartileValue[5]
-array upQuartileValue[5]
-array posMax[5]
-array posMin[5]
+array arrBlockSize[ARGC-1]
+array infostat[ARGC-1]
+array xposArr[ARGC-1]
+array max_y[ARGC-1]
+array boxsize[ARGC-1]
+array compMeanRatio[ARGC-1]
+array violinPos[ARGC-1]
+array meanPos[ARGC-1]
+array yscale[ARGC-1]
+array medianValue[ARGC-1]
+array lowQuartileValue[ARGC-1]
+array upQuartileValue[ARGC-1]
+array posMax[ARGC-1]
+array posMin[ARGC-1]
 
 i=1
 do for [i=1:ARGC-1] {
 
-   print sprintf("Processing Loop = %d", i)
+   print sprintf("Processing file: %s", corpusFiles[i])
 
    stats corpusFiles[i] nooutput
    numRecord = STATS_records
    chunkSize = numRecord - 15.0
-   arrChunkSize[i] = chunkSize
-   maxChunkSize = maxChunkSize < chunkSize ? chunkSize : maxChunkSize
+   arrBlockSize[i] = chunkSize
+   maxBlockSize = maxBlockSize < chunkSize ? chunkSize : maxBlockSize
 
    set datafile separator comma
 
@@ -190,8 +243,8 @@ do for [i=1:ARGC-1] {
 
    stats [*:*][*:*] $kdensity nooutput
    
-   if(chunkSize == maxChunkSize) {
-    maxChunk_max_y = STATS_max_y
+   if(chunkSize == maxBlockSize) {
+    maxBlock_max_y = STATS_max_y
    }
    max_y[i] = STATS_max_y 
    boxsize[i] = max_y[i] * 0.03
@@ -202,60 +255,90 @@ do for [i=1:ARGC-1] {
       infostat[i] = bias == 0 ? infostat[i] : sprintf(format, "Mean", compMeanRatio[i], "Mean (Bias)", compBiasMeanRatio, "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
 
       set style textbox 2 opaque fc rgb 0xb0b0b0 margin 4,4
-      set label 30 infostat[i] at graph .95,1.0 right boxed bs 2 front font "10,Courier New"
+      set label 30 infostat[i] at graph .95,1.0 right boxed bs 2 front font "Courier New"
    }
 }
 
-set border 3
-set xtics nomirror
-set ytics nomirror
-unset key
 
 set style fill solid 0.7
 set boxwidth boxsize[1] 
 
-intMaxColor = int(100.0*(maxChunkSize /( maxChunkSize+15)))
+intMaxColor = int(100.0*(maxBlockSize /( maxBlockSize+15)))
 maxColor = intMaxColor / 100.0
 
 set palette defined ( 0.0 'web-green', .5 'goldenrod', 0.8 'red', maxColor 'black')
 set colorbox invert
 set cbrange[0:maxColor]
 set cbtics (sprintf("%2.2f", maxColor) maxColor, "2.0" 0.5, "5.0" .2, "10.0" .1, "\U+221E" 0.0)
-set style textbox 2 opaque fc rgb 0xb0b0b0 margin 4, 4
+set cblabel "Compression Ratio of Page Blocks"
 
-ymax = maxChunkSize > 512 ? maxChunkSize + int(maxChunkSize / 20) : maxChunkSize + 50
+if(!isColorbox) {
+   unset colorbox
+}
+set style textbox 2 opaque fc rgb 0xb0b0b0 margin 4, 4
+ymax = maxBlockSize > 512 ? maxBlockSize + int(maxBlockSize / 20) : maxBlockSize + 50
 
 do for[i=1:ARGC-1] {
-    violinPos[i] = int(maxChunkSize/compMeanRatio[i] - arrChunkSize[i]/compMeanRatio[i])
+    violinPos[i] = int(maxBlockSize/compMeanRatio[i] - arrBlockSize[i]/compMeanRatio[i])
+    meanPos[i] = int(maxBlockSize/compMeanRatio[i])
+    if(isPosBottom ) {
+        violinPos[i] = int(maxBlockSize - arrBlockSize[i])
+        meanPos[i] = int(violinPos[i] + (arrBlockSize[i]/compMeanRatio[i]))
+    }
+    if(isPosTop) {
+        violinPos[i] = 0
+        meanPos[i] = int(arrBlockSize[i]/compMeanRatio[i])
+    }
 }
 
 do for[i=1:ARGC-1] {
-    yscale[i] = maxChunk_max_y / max_y[i]
-    xpos = xpos + maxChunk_max_y
+    yscale[i] = maxBlock_max_y / max_y[i]
+    xpos = xpos + maxBlock_max_y
     xposArr[i] = xpos
-    xpos = xpos + maxChunk_max_y + 10
+    xpos = xpos + maxBlock_max_y + 10
 
     if((ARGC-1) > 2) {
-        set object 11+i*2 circle at first xposArr[i],violinPos[i]+(arrChunkSize[i]/compMeanRatio[i]) radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
+        set object 11+i*2 circle at first xposArr[i],meanPos[i] radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
     }
-    set label 11+i*2+1 sprintf("%s", corpusTitle)."\nChunk Size = ".sprintf("%d", arrChunkSize[i])."\nComp Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], violinPos[i] center font '10,Courier New' front offset character 0,3
+
+    ypos = ymax
+    yoff = -1
+    if(isInfoTop) {
+        ypos = violinPos[i]+posMin[i]
+        yoff = 3
+    }
+    set label 11+i*2+1 sprintf("%s", corpusNames[i])."\nBlock Size = ".sprintf("%d", arrBlockSize[i])."\nAvg Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], ypos center font 'Arial,10' front offset character 0,yoff noenhanced
 }
-
-set yrange[ymax:0]
-set bmargin 3
-set tmargin 5
-
-set xlabel "Density Of Page Chunks Compressed"
-set ylabel "Delta Chunk size of Compression"
-set cblabel "Compression Ratio of Page Chunks"
 
 if((ARGC-1) > 2) {
 
     set table $Curve
     set samples ARGC-1
-    plot sample [n=1:ARGC-1] '+' using (xposArr[n]):(violinPos[n]+(arrChunkSize[n]/compMeanRatio[n]))
+    plot sample [n=1:ARGC-1] '+' using (xposArr[n]):(meanPos[n])
     unset table
 }
+
+set border 3
+unset key
+set bmargin 5
+set tmargin 5
+
+set xtics nomirror
+set ytics nomirror
+set xlabel "Density Of Page Blocks Compressed"
+set ylabel "Compression BLock Size"
+
+set xtics ("" 0) nomirror
+do for[i=1:ARGC-1] {
+   set xtics add (xposArr[i]) nomirror
+}
+
+if(!isXtics) {    
+    unset xlabel
+    set format x ""
+}
+
+set yrange[ymax:0]
 
 if((ARGC-1) < 3) {
    i=1
@@ -267,10 +350,15 @@ if((ARGC-1) < 3) {
 }
 
 if((ARGC-1) > 2) {
-   plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrChunkSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrChunkSize[j]) with vectors nohead lc palette z, \
-   $Curve smooth csplines lt -1 lw 2
+   if(isCurve) {
+      plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, \
+      $Curve smooth csplines lt -1 lw 2
+   }
+   else {
+      plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z
+   }
 }
 else {
-   plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrChunkSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrChunkSize[j]) with vectors nohead lc palette z, \
-   for[j=1:ARGC-1] '+' every ::::0 using (xposArr[j]):(violinPos[j]+lowQuartileValue[j]):(posMin[i]):(violinPos[j]+posMax[j]):(violinPos[j]+upQuartileValue[j]) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars
+   plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, \
+   for[j=1:ARGC-1] '+' every ::::0 using (xposArr[j]):(violinPos[j]+lowQuartileValue[j]):(violinPos[j]+posMin[j]):(violinPos[j]+posMax[j]):(violinPos[j]+upQuartileValue[j]) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars
 }
