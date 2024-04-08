@@ -11,6 +11,7 @@
 
 void match_cell_model::init()
 {
+    verbose = 0;
     large_counter = 0;
     for (int ii = 0; ii < NB_BYTE; ii++)
     {
@@ -223,8 +224,7 @@ void match_detection_model::init()
     {
         match_cell[cell].init();
     }
-
-    match_cell[0].verbose = 0;
+    verbose = 0;
 }
 
 void match_detection_model::loadData(unsigned char* data)
