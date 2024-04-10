@@ -17,6 +17,7 @@ struct Matchstruct
     int  pos;
     int  offset;
     int  length;
+    int  large_counter;
 };
 
 struct History
@@ -38,6 +39,7 @@ public:
     void findLargeMatch();
     void processClock();
     Matchstruct getMatch(int pos);
+    Matchstruct getNewMatch(int pos);
     Matchstruct getLargeMatch();
 
     int  small_counter[NB_BYTE];
@@ -49,9 +51,12 @@ public:
     History history_reg_next[NB_BYTE];
     bool comparator[NB_BYTE][NB_BYTE];
     Matchstruct match_list[NB_BYTE];
+    Matchstruct new_match_list[NB_BYTE];
     Matchstruct large_match;
     bool last_data = 0;
     bool verbose = 0;
+
+
 
 };
 
@@ -63,16 +68,21 @@ public:
     void loadData(unsigned char* data);
     void processCycle();
     Matchstruct* getStandardMatch();
+    Matchstruct* getNewMatch();
     Matchstruct* getLargeMatch();
     Matchstruct* getMatchList();
+    Matchstruct* getMatchListStartPos();
 
     bool verbose = 0;
     Matchstruct matchList[CHUNKSIZE];
+    Matchstruct matchList_startpos[CHUNKSIZE];
     int cycle = 0;
 
     Matchstruct match;
     Matchstruct standard_match[NB_BYTE];
     Matchstruct large_match;
+
+    Matchstruct new_match[NB_BYTE];
 
     match_cell_model match_cell[NB_CELL];
 
