@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <memory>
 
 #include "matchlz4.h"
 
@@ -60,9 +61,27 @@ public:
 
 };
 
-class match_detection_model
+class match_detection_model: public std::enable_shared_from_this<match_detection_model>
 {
 public:
+
+    std::shared_ptr<match_detection_model> AddSelfReference()
+    {
+        if (selfReference == nullptr) {
+            auto dpiCallReference = shared_from_this();
+            selfReference = std::dynamic_pointer_cast<match_detection_model>(dpiCallReference);
+        }
+        return selfReference;
+    }
+
+    void RemoveSelfReference() {
+
+        selfReference = nullptr;
+    }
+
+    ~match_detection_model() {
+        printf("Delete the match_detection_model\n");
+    }
 
     void init();
     void loadData(unsigned char* data);
@@ -91,6 +110,11 @@ public:
     History  next_history[NB_BYTE];
 
     unsigned char input_string[NB_BYTE];
+
+    unsigned int call_counter = 0;
+
+private:
+    std::shared_ptr<match_detection_model> selfReference;
 
 };
 

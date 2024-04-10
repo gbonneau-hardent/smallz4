@@ -11,6 +11,7 @@
 
 void match_cell_model::init()
 {
+    verbose = 0;
     large_counter = 0;
     for (int ii = 0; ii < NB_BYTE; ii++)
     {
@@ -266,8 +267,7 @@ void match_detection_model::init()
     {
         match_cell[cell].init();
     }
-
-    match_cell[0].verbose = 0;
+    verbose = 0;
 }
 
 void match_detection_model::loadData(unsigned char* data)
@@ -490,9 +490,9 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
 
       if (matchList[pos].valid) {
          //printf("-----  MATCH: pos:%d offset:%d length:%d\n", matchList[pos].pos, matchList[pos].offset, matchList[pos].length);
-         if (((matchList[pos].pos - matchList[pos].length) < blockSize) && ((matchList[pos].pos - matchList[pos].length) > 0)) {
+         if (((uint64_t)(matchList[pos].pos - matchList[pos].length) < blockSize) && ((matchList[pos].pos - matchList[pos].length) > 0)) {
 
-            if (matchList[pos].pos <= blockSize - 6) {
+            if (matchList[pos].pos <= (long int)(blockSize - 6)) {
                matches[matchList[pos].pos - matchList[pos].length].distance = matchList[pos].offset + 1;
                matches[matchList[pos].pos - matchList[pos].length].length = matchList[pos].length;
             }
