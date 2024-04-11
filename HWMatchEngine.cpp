@@ -274,8 +274,21 @@ void match_detection_model::processCycle()
 
     }
 
-    // Append Matches to matchlist
+    // INIT the matchlists
+    for (int pos = 0; pos < NB_BYTE; pos++)
+    {
+        matchList[pos].valid = 0;
+        matchList[pos].length = 0;
+        matchList[pos].offset = 0;
+        matchList[pos].large_counter = 0;
 
+        matchList_startpos[pos].valid = 0;
+        matchList_startpos[pos].length = 0;
+        matchList_startpos[pos].offset = 0;
+        matchList_startpos[pos].large_counter = 0;
+    }
+
+    // Append Matches to matchlist
     int start_pos;
     
     for (int pos = 0; pos < NB_BYTE; pos++)

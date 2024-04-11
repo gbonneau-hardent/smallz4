@@ -72,7 +72,7 @@ public:
     }
 
     ~match_detection_model() {
-        printf("Delete the match_detection_model\n");
+
     }
 
     void init();
@@ -94,8 +94,6 @@ public:
 
     bool verbose = 0;
     int cycle = 0;
-
-    unsigned int call_counter = 0; // WHAT IS THAT?
 
 private:
     std::shared_ptr<match_detection_model> selfReference;
