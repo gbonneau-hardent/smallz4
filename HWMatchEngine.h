@@ -15,7 +15,6 @@
 struct Matchstruct
 {
     bool valid;
-    int  pos;
     int  offset;
     int  length;
     int  large_counter;
@@ -31,17 +30,13 @@ class match_cell_model
 {
 public:
 
-
     void init();
     void loadDataHistory(unsigned char* data_in, bool last_data_in, History* history_in, History* history_out);
     void compareDataHisoty();
     void updateSmallCounter();
     void updateLargeCounterAndStatus();
-    void findLargeMatch();
     void processClock();
     Matchstruct getMatch(int pos);
-    Matchstruct getNewMatch(int pos);
-    Matchstruct getLargeMatch();
 
     int  small_counter[NB_BYTE];
     bool large_count_status[NB_BYTE];
@@ -52,12 +47,9 @@ public:
     History history_reg_next[NB_BYTE];
     bool comparator[NB_BYTE][NB_BYTE];
     Matchstruct match_list[NB_BYTE];
-    Matchstruct new_match_list[NB_BYTE];
-    Matchstruct large_match;
     bool last_data = 0;
+
     bool verbose = 0;
-
-
 
 };
 
@@ -86,22 +78,8 @@ public:
     void init();
     void loadData(unsigned char* data);
     void processCycle();
-    Matchstruct* getStandardMatch();
-    Matchstruct* getNewMatch();
-    Matchstruct* getLargeMatch();
-    Matchstruct* getMatchList();
-    Matchstruct* getMatchListStartPos();
 
-    bool verbose = 0;
-    Matchstruct matchList[CHUNKSIZE];
-    Matchstruct matchList_startpos[CHUNKSIZE];
-    int cycle = 0;
-
-    Matchstruct match;
-    Matchstruct standard_match[NB_BYTE];
-    Matchstruct large_match;
-
-    Matchstruct new_match[NB_BYTE];
+    unsigned char input_string[NB_BYTE];
 
     match_cell_model match_cell[NB_CELL];
 
@@ -109,9 +87,15 @@ public:
     History  current_history[NB_BYTE];
     History  next_history[NB_BYTE];
 
-    unsigned char input_string[NB_BYTE];
+    Matchstruct* getMatchList();
+    Matchstruct* getMatchListStartPos();
+    Matchstruct matchList[CHUNKSIZE];
+    Matchstruct matchList_startpos[CHUNKSIZE];
 
-    unsigned int call_counter = 0;
+    bool verbose = 0;
+    int cycle = 0;
+
+    unsigned int call_counter = 0; // WHAT IS THAT?
 
 private:
     std::shared_ptr<match_detection_model> selfReference;
