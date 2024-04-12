@@ -61,13 +61,13 @@ extern "C" uint32_t PushData(unsigned char data[NB_BYTE], chandle compression_mo
     match_detection->loadData(data);
     match_detection->processCycle();
 
-    printf("verbose: %u\n", match_detection->verbose);
+    // printf("verbose: %u\n", match_detection->verbose);
 
     return 0;
 }
 
 /// @brief Get the list of match
-/// @param match_list match list after compressing whole page
+/// @param match_list match list of all the cell
 /// @param compression_model handle to the compression model
 /// @return status of casting (0 success and 1 error)
 extern "C" uint32_t GetMatch(Matchstruct** match_list, chandle compression_model)
