@@ -86,6 +86,7 @@ void match_cell_model::updateSmallCounter()
         match_list[pos].valid = 0;
         match_list[pos].length = 0;
         match_list[pos].offset = 0;
+        match_list[pos].large_counter = 0;
 
         for (int offset = 0; offset < NB_BYTE; offset++)
         {
@@ -290,7 +291,7 @@ void match_detection_model::processCycle()
 
     // Append Matches to matchlist
     int start_pos;
-    
+
     for (int pos = 0; pos < NB_BYTE; pos++)
     {
         if (new_match[pos].valid)
@@ -307,7 +308,7 @@ void match_detection_model::processCycle()
             {
                 matchList[cycle * NB_BYTE + pos] = new_match[pos];
             }
-            
+
             start_pos = cycle * NB_BYTE + pos - matchList[cycle * NB_BYTE + pos].length;
 
             if (matchList_startpos[start_pos].valid) // Need to check is length is larger
@@ -315,7 +316,7 @@ void match_detection_model::processCycle()
                 if (matchList_startpos[start_pos].length < matchList[cycle * NB_BYTE + pos].length)
                 {
                     matchList_startpos[start_pos] = matchList[cycle * NB_BYTE + pos];
-                } 
+                }
             }
             else // Nothing here can be appended
             {
@@ -325,7 +326,7 @@ void match_detection_model::processCycle()
         }
 
     }
-     
+
 
     cycle++;
     if (cycle > 0 && cycle < 0) {
@@ -404,7 +405,7 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
            }
        }
    }
-   
+
    for (unsigned int ii = 0; ii < matches.size(); ii++) {
        //printf("MATCH_NEW:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
    }
@@ -423,7 +424,7 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
        }
    }
 
-    
+
 
    // 2ND STEP
    // Look for 4 consecutive non-zero distances
@@ -466,7 +467,7 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
 
 
    // FINAL STEP
-   // Recompute the length 
+   // Recompute the length
    int length_cnt;
 
    for (unsigned int ii = matches.size() - 1; ii > 1; ii--) {
@@ -494,12 +495,12 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
            }
        }
    }
-   
-   
+
+
    for (unsigned int ii = 0; ii < matches.size(); ii++) {
        //printf("MATCH_NEW:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
    }
-   
+
 
    //printf("\n");
 
