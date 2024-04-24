@@ -7,6 +7,7 @@ isXtics = 0
 isInfoTop = 0
 isPosBottom = 0
 isPosTop = 1
+isYorigTop = 1
 isCurve  = 0
 
 if(isPngTerm) {
@@ -259,7 +260,6 @@ do for [i=1:ARGC-1] {
    }
 }
 
-
 set style fill solid 0.7
 set boxwidth boxsize[1] 
 
@@ -301,13 +301,20 @@ do for[i=1:ARGC-1] {
         set object 11+i*2 circle at first xposArr[i],meanPos[i] radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
     }
 
-    ypos = ymax
-    yoff = -1
-    if(isInfoTop) {
-        ypos = violinPos[i]+posMin[i]
-        yoff = 3
+    if(isYorigTop) {
+       ypos = ymax
+       yoff = -1
+       if(isInfoTop) {
+           ypos = violinPos[i]+posMin[i]
+           yoff = 3
+       }
+    }
+    else {
+       ypos = 0
+       yoff = -1    
     }
     set label 11+i*2+1 sprintf("%s", corpusNames[i])."\nBlock Size = ".sprintf("%d", arrBlockSize[i])."\nAvg Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], ypos center font 'Arial,10' front offset character 0,yoff noenhanced
+#   print sprintf("%s", corpusNames[i])."\nBlock Size = ".sprintf("%d", arrBlockSize[i])."\nAvg Ratio = ".sprintf("%2.2f", compMeanRatio[i]).", xporArr[i] = ".sprintf("%d", xporArr[i]).", ypos = ".sprintf("%d", ypos)
 }
 
 if((ARGC-1) > 2) {
@@ -338,7 +345,12 @@ if(!isXtics) {
     set format x ""
 }
 
-set yrange[ymax:0]
+if(isYorigTop) {
+   set yrange[ymax:0]
+}
+else {
+  set yrange[0:ymax]
+}
 
 if((ARGC-1) < 3) {
    i=1
