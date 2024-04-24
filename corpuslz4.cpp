@@ -169,6 +169,7 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
       ("o,offset", "Create histogram of search match offset", cxxopts::value<bool>()->default_value("false"))
       ("l,length", "Create histogram of search match length", cxxopts::value<bool>()->default_value("false"))
       ("h,histogram", "Create histogram of compression chunk size", cxxopts::value<bool>()->default_value("false"))
+      ("g,gnuplot", "Friendly statistic for Gnuplot", cxxopts::value<bool>()->default_value("true"))
       ;
 
    try {
@@ -185,6 +186,7 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
       contextLZ4.isDumpOffset  = result["o"].as<bool>();
       contextLZ4.isDumpLength  = result["l"].as<bool>();
       contextLZ4.isDumpComp    = result["h"].as<bool>();
+      contextLZ4.isStatGnuplot = result["g"].as<bool>();
    }
    catch (const cxxopts::exceptions::exception& ex)
    {
@@ -609,28 +611,15 @@ int32_t CorpusLZ4::DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reade
    uint64_t divider = 1;
    uint64_t numChunk = lz4Reader.totalChunkCompress;
 
-   while (numChunk/divider > 64000) {
-      divider++;
-   }
-   std::cout << "numChunk/divider = " << numChunk /divider << std::endl;
+   // If number of chunk for a compression corpus set is too high Gnuplot can take many hours for the statistical
+   // computation to create a Violon Plot. And it doesn't add anything from a visual point of view. Thus if the number
+   // of chunk is greater than a defined maximum the statistic of number of chunk will be averaged.
 
-   //for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
-   //
-   //   std::stringstream ss;
-   //   ss << i;
-   //   for (int32_t chunckIndex = contextLZ4.chunkSize.size() - 1; 0 <= chunckIndex; --chunckIndex) {
-   //
-   //      uint64_t maxCompSize = contextLZ4.chunkSize[chunckIndex] + lz4MaxExpand;
-   //      maxCompSize = contextLZ4.isRounding ? ((maxCompSize + 63) >> 6) << 6 : maxCompSize;
-   //      if (maxCompSize >= i) {
-   //         if (contextLZ4.chunkAllCompStat[chunckIndex] != nullptr) {
-   //            ss << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i];
-   //         }
-   //      }
-   //   }
-   //   contextLZ4.statFile << std::fixed << std::setprecision(2) << ss.str() << std::endl;
-   // //contextLZ4.statFile << std::fixed << std::setprecision(2) << i << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i] << std::endl;
-   //}
+   if (contextLZ4.isStatGnuplot) {
+      while (numChunk / divider > 64000) {
+         divider++;
+      }
+   }
 
    for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
    
@@ -640,34 +629,6 @@ int32_t CorpusLZ4::DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reade
 
       contextLZ4.statFile << std::fixed << std::setprecision(2) << i << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i] << "," << avgChunk << std::endl;
    }
-
-
-   //uint32_t idx = 1;
-   //uint32_t statChunk = 0;
-   //
-   //for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
-   //
-   //   uint32_t allNumChunk = (*contextLZ4.chunkAllCompStat[chunckIndex])[i] + allRemainer;
-   //   uint32_t allAvgChunk = allNumChunk / divider;
-   //   allRemainer = allNumChunk - allAvgChunk * divider;
-   //
-   //   assert(remainer == 0);
-   //   uint32_t numChunk = allAvgChunk + remainer;
-   //   if (numChunk != 0) {
-   //      std::cout << "";
-   //   }
-   //   uint32_t avgChunk = numChunk / divider;
-   //   remainer = numChunk - avgChunk * divider;
-   //
-   //   for (uint32_t j = 1; j <= divider; j++) {
-   //      statChunk = avgChunk;
-   //      if (remainer != 0) {
-   //         statChunk += 1;
-   //         remainer--;
-   //      }
-   //      contextLZ4.statFile << std::fixed << std::setprecision(2) << idx++ << "," << ((j == 1) ? (*contextLZ4.chunkAllCompStat[chunckIndex])[i] : 0) << "," << statChunk << std::endl;
-   //   }
-   //}
 
    std::cout << std::fixed << std::setprecision(1) << std::endl;
    std::cout << "Total chunks (size = " << contextLZ4.chunkSize[chunckIndex] << ") processed = " << lz4Reader.totalChunkCount << ", chunks compressed = " << lz4Reader.totalChunkCompress << " (" << (lz4Reader.totalChunkCompress * 100.0) / lz4Reader.totalChunkCount << ")" << std::endl;
