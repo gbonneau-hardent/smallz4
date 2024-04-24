@@ -1,4 +1,1 @@
-./data/manual_corpus/4k_zeroed.txt
-./data/manual_corpus/4k_zero_and_data.txt
-./data/manual_corpus/cad_virtuoso.txt
-./data/manual_corpus/py310.txt
+./data/\silicia_corpus\dickens

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <memory>
 
 #include "matchlz4.h"
 
@@ -14,9 +15,9 @@
 struct Matchstruct
 {
     bool valid;
-    int  pos;
     int  offset;
     int  length;
+    int  large_counter;
 };
 
 struct History
@@ -29,16 +30,13 @@ class match_cell_model
 {
 public:
 
-
     void init();
     void loadDataHistory(unsigned char* data_in, bool last_data_in, History* history_in, History* history_out);
     void compareDataHisoty();
     void updateSmallCounter();
     void updateLargeCounterAndStatus();
-    void findLargeMatch();
     void processClock();
     Matchstruct getMatch(int pos);
-    Matchstruct getLargeMatch();
 
     int  small_counter[NB_BYTE];
     bool large_count_status[NB_BYTE];
@@ -49,30 +47,39 @@ public:
     History history_reg_next[NB_BYTE];
     bool comparator[NB_BYTE][NB_BYTE];
     Matchstruct match_list[NB_BYTE];
-    Matchstruct large_match;
     bool last_data = 0;
+
     bool verbose = 0;
 
 };
 
-class match_detection_model
+class match_detection_model: public std::enable_shared_from_this<match_detection_model>
 {
 public:
+
+    std::shared_ptr<match_detection_model> AddSelfReference()
+    {
+        if (selfReference == nullptr) {
+            auto dpiCallReference = shared_from_this();
+            selfReference = std::dynamic_pointer_cast<match_detection_model>(dpiCallReference);
+        }
+        return selfReference;
+    }
+
+    void RemoveSelfReference() {
+
+        selfReference = nullptr;
+    }
+
+    ~match_detection_model() {
+
+    }
 
     void init();
     void loadData(unsigned char* data);
     void processCycle();
-    Matchstruct* getStandardMatch();
-    Matchstruct* getLargeMatch();
-    Matchstruct* getMatchList();
 
-    bool verbose = 0;
-    Matchstruct matchList[CHUNKSIZE];
-    int cycle = 0;
-
-    Matchstruct match;
-    Matchstruct standard_match[NB_BYTE];
-    Matchstruct large_match;
+    unsigned char input_string[NB_BYTE];
 
     match_cell_model match_cell[NB_CELL];
 
@@ -80,7 +87,16 @@ public:
     History  current_history[NB_BYTE];
     History  next_history[NB_BYTE];
 
-    unsigned char input_string[NB_BYTE];
+    Matchstruct* getMatchList();
+    Matchstruct* getMatchListStartPos();
+    Matchstruct matchList[CHUNKSIZE];
+    Matchstruct matchList_startpos[CHUNKSIZE];
+
+    bool verbose = 0;
+    int cycle = 0;
+
+private:
+    std::shared_ptr<match_detection_model> selfReference;
 
 };
 
