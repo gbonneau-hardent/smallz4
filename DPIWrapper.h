@@ -13,5 +13,5 @@
 extern "C" chandle InitCompression();
 extern "C" uint32_t PushData(unsigned char data[NB_BYTE], chandle compression_model);
 extern "C" uint32_t GetCellMatchArray(Matchstruct match_cell_list [CHUNKSIZE], chandle compression_model);
-extern "C" uint32_t GetCellMatch(Matchstruct* match_cell_list, uint32_t cell, uint32_t pos, chandle compression_model);
+extern "C" uint32_t GetCellMergedMatchArray(Matchstruct** match_cell_list, chandle compression_model);
 extern "C" uint32_t GetMatch(Matchstruct** match_list, chandle compression_model);

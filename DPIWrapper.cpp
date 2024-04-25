@@ -87,12 +87,12 @@ extern "C" uint32_t GetCellMatchArray(Matchstruct match_cell_list [CHUNKSIZE], c
             uint32_t pos1d = pos+(cell*NB_BYTE);
             match_cell_list[pos1d] = match_detection->match_cell[cell].getMatch(pos);
 
-            // if (match_cell_list[pos1d].valid)
+            // if ((*match_cell_list)[pos1d].valid)
             // {
-            //     printf("GetCellMatchArray: match_cell_list[%u].valid = %u\n", pos1d, match_cell_list[pos1d].valid);
-            //     printf("GetCellMatchArray: match_cell_list[%u].offset = %u\n", pos1d, match_cell_list[pos1d].offset);
-            //     printf("GetCellMatchArray: match_cell_list[%u].length = %u\n", pos1d, match_cell_list[pos1d].length);
-            //     printf("GetCellMatchArray: match_cell_list[%u].large_counter = %u\n", pos1d, match_cell_list[pos1d].large_counter);
+            //     printf("GetCellMatchArray: match_cell_list[%u].valid = %u\n", pos1d, (*match_cell_list)[pos1d].valid);
+            //     printf("GetCellMatchArray: match_cell_list[%u].offset = %u\n", pos1d, (*match_cell_list)[pos1d].offset);
+            //     printf("GetCellMatchArray: match_cell_list[%u].length = %u\n", pos1d, (*match_cell_list)[pos1d].length);
+            //     printf("GetCellMatchArray: match_cell_list[%u].large_counter = %u\n", pos1d, (*match_cell_list)[pos1d].large_counter);
             // }
         }
     }
@@ -114,11 +114,11 @@ extern "C" uint32_t GetCellMatchArray(Matchstruct match_cell_list [CHUNKSIZE], c
     return 0;
 }
 
-/// @brief Get the list of cell match (one call per clk)
-/// @param match_list match list of all the cell
+/// @brief Get the list of cell match after cell merge
+/// @param match_list match list of all the cell merged
 /// @param compression_model handle to the compression model
 /// @return status of casting (0 success and 1 error)
-extern "C" uint32_t GetCellMatch(Matchstruct* match_cell_pos, uint32_t cell, uint32_t pos, chandle compression_model)
+extern "C" uint32_t GetCellMergedMatchArray(Matchstruct** match_cell_list, chandle compression_model)
 {
     match_detection_model *match_detection = dynamic_cast<match_detection_model *>(reinterpret_cast<match_detection_model *>(compression_model));
     // Matchstruct match_cell_list [CHUNKSIZE];
@@ -127,14 +127,20 @@ extern "C" uint32_t GetCellMatch(Matchstruct* match_cell_pos, uint32_t cell, uin
         return 1;
     }
 
-    *match_cell_pos = match_detection->match_cell[cell].getMatch(pos);
+    *match_cell_list = match_detection->getMatchList();
 
-    // if (match_cell_pos->valid)
+
+    // for (size_t idx = 0; idx < CHUNKSIZE; idx++)
     // {
-    //     printf("GetCellMatch: match_cell_pos[%u][%u].valid = %u\n", cell, pos, match_cell_pos->valid);
-    //     printf("GetCellMatch: match_cell_pos[%u][%u].offset = %u\n", cell, pos, match_cell_pos->offset);
-    //     printf("GetCellMatch: match_cell_pos[%u][%u].length = %u\n", cell, pos, match_cell_pos->length);
-    //     printf("GetCellMatch: match_cell_pos[%u][%u].large_counter = %u\n", cell, pos, match_cell_pos->large_counter);
+
+    //     if (*matc(h_cell_list[idx].valid)
+    //     {
+    //         printf("GetCellMergedMatchArray: match_cell_list[%lu].valid = %u\n", idx, (*match_cell_list)[idx].valid);
+    //         printf("GetCellMergedMatchArray: match_cell_list[%lu].offset = %u\n", idx, (*match_cell_list)[idx].offset);
+    //         printf("GetCellMergedMatchArray: match_cell_list[%lu].length = %u\n", idx, (*match_cell_list)[idx].length);
+    //         printf("GetCellMergedMatchArray: match_cell_list[%lu].large_counter = %u\n", idx, (*match_cell_list)[idx].large_counter);
+    //     }
+
     // }
 
     return 0;
@@ -152,7 +158,7 @@ extern "C" uint32_t GetMatch(Matchstruct** match_list, chandle compression_model
         return 1;
     }
 
-    *match_list = match_detection->getMatchList();
+    *match_list = match_detection->getMatchListStartPos();
 
     // for (size_t i = 0; i < CHUNKSIZE; i++)
     // {
