@@ -353,7 +353,7 @@ Matchstruct* match_detection_model::getMatchListStartPos()
 
 void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock)
 {
-   //std::cout << "Using HW Cmodel to Compress" << std::endl;
+   std::cout << "Using HW Cmodel to Compress" << std::endl;
 
    for (unsigned int ii = 0; ii < matches.size(); ii++) {
         //printf("MATCH_ORI:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
@@ -434,7 +434,7 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
    }
    // Precompute (matches[ii].length + 2 >= matches[ii + 1].length)
    bool ii_is_better_than_iip1[CHUNKSIZE];
-   for (unsigned int ii = 0; ii < matches.size(); ii++) {
+   for (unsigned int ii = 0; ii < matches.size()-1; ii++) {
        ii_is_better_than_iip1[ii] = (matches[ii].length + 2 >= matches[ii + 1].length);  // + 1 is also corrrect (need to run the complete Silicia corpus test to see if it is higher than 1.83)
    }
 
@@ -468,7 +468,7 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
 
    // FINAL STEP
    // Recompute the length
-   int length_cnt;
+   int length_cnt = 0;
 
    for (unsigned int ii = matches.size() - 1; ii > 1; ii--) {
        if (matches[ii].distance == matches[ii - 1].distance)
@@ -501,6 +501,22 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
        //printf("MATCH_NEW:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
    }
 
+  /* uint32_t start = (rand() % 1000) + 2500;
+   for (size_t idx = start; idx >= 0; idx--)
+   {
+       if ((matches[idx].length > 4) && (matches[idx].distance > 0)) {
+           matches[idx].distance++;
+           break;
+       }
+   }*/
+
+   //// ERASE the Current MATCHLIST
+   //for (unsigned int ii = 0; ii < matches.size(); ii++) {
+   //    matches[ii].distance = 0;
+   //    matches[ii].length = 0;
+   //}
+   //matches[8].distance = 1;
+   //matches[8].length = 4088;
 
    //printf("\n");
 
