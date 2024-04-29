@@ -723,13 +723,30 @@ int32_t simulation(int argc, const char* argv[])
             lz4DecompReader.decompPos  = 0;
 
             corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
-            int retCmp = std::strncmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
+            int retCmp = std::memcmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
+
+           /* char* orig = lz4Reader.fileBuffer.get();
+            char* decomp = lz4DecompReader.decompBuffer.get();
+            int error = 0;
+
+            for (size_t idx = 0; idx < contextLZ4.chunkSize[chunckIndex]; idx++)
+            {
+                if (orig[idx] != decomp[idx]) {
+                    std::cout << "MRV:" << orig[idx] << " vs " << decomp[idx] << std::endl;
+                    error++;
+                }
+            }*/
 
             if (retCmp != 0) {
                corpusLZ4.dumpDiff(lz4Reader.fileBuffer, lz4DecompReader.decompBuffer, contextLZ4.chunkSize[chunckIndex]);
                std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
                exit(-2);
             }
+
+           /* if (error != 0) {
+                std::cout << "MRV: I found the error" << std::endl;
+                exit(-2);
+            }*/
          }
          corpusLZ4.DumpFileStat(contextLZ4);
       }
