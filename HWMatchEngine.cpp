@@ -180,7 +180,7 @@ void match_cell_model::updateLargeCounterAndStatus()
         large_counter++;
     }
 
-
+    if (verbose) printf("LARGE_CNT:%d\n", large_counter);
 }
 
 
@@ -257,14 +257,30 @@ void match_detection_model::processCycle()
         new_match[pos].large_counter = 0;
     }
 
+    int largest_large_counter = 0;
+
     for (int cell = 0; cell < NB_CELL; cell++)
     {
         match_cell[cell].processClock();
-
         for (int pos = 0; pos < NB_BYTE; pos++)
         {
             current_match = match_cell[cell].getMatch(pos);
-            if (current_match.valid && ( ((new_match[pos].length < current_match.length) && (new_match[pos].large_counter == current_match.large_counter)) || (new_match[pos].large_counter < current_match.large_counter)))
+            if (current_match.valid && (largest_large_counter < current_match.large_counter) )
+            {
+                largest_large_counter = current_match.large_counter;
+            }
+        }
+    }
+
+    bool is_large_match;
+
+    for (int cell = 0; cell < NB_CELL; cell++)
+    {
+        for (int pos = 0; pos < NB_BYTE; pos++)
+        {
+            current_match = match_cell[cell].getMatch(pos);
+            is_large_match = (current_match.length >= 2 * NB_BYTE);
+            if (current_match.valid && (   ((new_match[pos].length < current_match.length) && (new_match[pos].large_counter==0) && (is_large_match==0)) || ((new_match[pos].length < current_match.length) && (largest_large_counter == current_match.large_counter) && (is_large_match==1)) ) )
             {
                 new_match[pos].valid = 1;
                 new_match[pos].offset = current_match.offset + (NB_BYTE * cell);
@@ -272,7 +288,6 @@ void match_detection_model::processCycle()
                 new_match[pos].large_counter = current_match.large_counter;
             }
         }
-
     }
 
     // INIT the matchlists
@@ -336,11 +351,11 @@ void match_detection_model::processCycle()
     if (cycle > 0 && cycle < 0) {
         printf("CYCLE: %d\n", cycle);
         verbose = 1;
-        match_cell[102].verbose = 1;
+        match_cell[36].verbose = 1;
     }
     else {
         verbose = 0;
-        match_cell[102].verbose = 0;
+        match_cell[36].verbose = 0;
     }
 
 }
