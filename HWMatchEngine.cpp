@@ -286,9 +286,9 @@ void match_detection_model::processCycle()
             {
                 new_match[pos].valid = 1;
                 new_match[pos].offset = current_match.offset + (NB_BYTE * cell);
-                new_match[pos].length = current_match.length;
-                new_match[pos].large_counter = largest_large_counter;
+                new_match[pos].length = current_match.length; 
             }
+            new_match[pos].large_counter = largest_large_counter;
         }
     }
 
