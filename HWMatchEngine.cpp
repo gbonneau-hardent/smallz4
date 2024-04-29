@@ -274,7 +274,7 @@ void match_detection_model::processCycle()
 
     bool is_large_match;
 
-    printf("CYCLE:%d LARGEST LARGE COUNTER:%d\n", cycle, largest_large_counter);
+    //printf("CYCLE:%d LARGEST LARGE COUNTER:%d\n", cycle, largest_large_counter);
 
     for (int cell = 0; cell < NB_CELL; cell++)
     {
