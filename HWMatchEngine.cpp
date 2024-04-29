@@ -274,7 +274,7 @@ void match_detection_model::processCycle()
 
     bool is_large_match;
 
-    //printf("CYCLE:%d LARGEST LARGE COUNTER:%d\n", cycle, largest_large_counter);
+    printf("CYCLE:%d LARGEST LARGE COUNTER:%d\n", cycle, largest_large_counter);
 
     for (int cell = 0; cell < NB_CELL; cell++)
     {
@@ -312,8 +312,7 @@ void match_detection_model::processCycle()
 
     for (int pos = 0; pos < NB_BYTE; pos++)
     {
-        if (new_match[pos].valid)
-        {
+
             //printf("NEW MATCH: pos:%d offset:%d length:%d lcnt:%d\n", new_match[pos].pos, new_match[pos].offset, new_match[pos].length, new_match[pos].large_counter);
             if (new_match[pos].length >= 2 * NB_BYTE) // Large cnt
             {
@@ -328,6 +327,8 @@ void match_detection_model::processCycle()
                 resolved_length = new_match[pos].length;
             }
 
+        if (new_match[pos].valid)
+        {
             start_pos = cycle * NB_BYTE + pos - resolved_length;
 
             if (matchList_startpos[start_pos].valid) // Need to check is length is larger
