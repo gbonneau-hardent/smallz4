@@ -86,7 +86,7 @@ void match_cell_model::updateSmallCounter()
         match_list[pos].valid = 0;
         match_list[pos].length = 0;
         match_list[pos].offset = 0;
-        match_list[pos].large_counter = 0;
+        match_list[pos].large_counter = large_counter;
 
         for (int offset = 0; offset < NB_BYTE; offset++)
         {
@@ -265,7 +265,7 @@ void match_detection_model::processCycle()
         for (int pos = 0; pos < NB_BYTE; pos++)
         {
             current_match = match_cell[cell].getMatch(pos);
-            if (current_match.valid && (largest_large_counter < current_match.large_counter) )
+            if (largest_large_counter < current_match.large_counter)
             {
                 largest_large_counter = current_match.large_counter;
             }
@@ -273,6 +273,8 @@ void match_detection_model::processCycle()
     }
 
     bool is_large_match;
+
+    printf("CYCLE:%d LARGEST LARGE COUNTER:%d\n", cycle, largest_large_counter);
 
     for (int cell = 0; cell < NB_CELL; cell++)
     {
@@ -348,14 +350,14 @@ void match_detection_model::processCycle()
 
 
     cycle++;
-    if (cycle > 0 && cycle < 0) {
+    if (cycle > 54 && cycle < 64) {
         printf("CYCLE: %d\n", cycle);
         verbose = 1;
-        match_cell[36].verbose = 1;
+        match_cell[35].verbose = 1;
     }
     else {
         verbose = 0;
-        match_cell[36].verbose = 0;
+        match_cell[35].verbose = 0;
     }
 
 }
