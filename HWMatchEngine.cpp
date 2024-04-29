@@ -350,7 +350,7 @@ void match_detection_model::processCycle()
 
 
     cycle++;
-    if (cycle > 55 && cycle < 65) {
+    if (cycle > 0 && cycle < 0) {
         printf("CYCLE: %d\n", cycle);
         verbose = 1;
         match_cell[0].verbose = 1;
