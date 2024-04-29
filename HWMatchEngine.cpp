@@ -282,7 +282,7 @@ void match_detection_model::processCycle()
         {
             current_match = match_cell[cell].getMatch(pos);
             is_large_match = (current_match.length >= 2 * NB_BYTE);
-            if (current_match.valid && (   ((new_match[pos].length < current_match.length) && (new_match[pos].large_counter==0) && (is_large_match==0)) || ((new_match[pos].length < current_match.length) && (largest_large_counter == current_match.large_counter) && (is_large_match==1)) ) )
+            if (current_match.valid && (   ((new_match[pos].length < current_match.length) && (is_large_match==0)) || ((new_match[pos].length < current_match.length) && (largest_large_counter == current_match.large_counter) && (is_large_match==1)) ) )
             {
                 new_match[pos].valid = 1;
                 new_match[pos].offset = current_match.offset + (NB_BYTE * cell);
