@@ -291,6 +291,7 @@ void match_detection_model::processCycle()
 
     // Append Matches to matchlist
     int start_pos;
+    int resolved_length;
 
     for (int pos = 0; pos < NB_BYTE; pos++)
     {
@@ -301,26 +302,29 @@ void match_detection_model::processCycle()
             {
                 //printf("NEW LARGE MATCH: pos:%d epos:%d offset:%d length:%d lcnt:%d\n", pos, new_match[pos].pos, new_match[pos].offset, new_match[pos].length, new_match[pos].large_counter);
                 matchList[cycle * NB_BYTE + pos] = new_match[pos];
-                matchList[cycle * NB_BYTE + pos].length = new_match[pos].length - (2*NB_BYTE) + pos + new_match[pos].large_counter*NB_BYTE;
+                resolved_length = (new_match[pos].length - (2 * NB_BYTE) + pos + new_match[pos].large_counter * NB_BYTE);
                 //printf("NEW ULARGE MATCH: pos:%d epos:%d offset:%d length:%d lcnt:%d\n", pos, new_match[pos].pos, new_match[pos].offset, matchList[cycle * NB_BYTE + pos].length, new_match[pos].large_counter);
             }
             else // small cnt
             {
                 matchList[cycle * NB_BYTE + pos] = new_match[pos];
+                resolved_length = new_match[pos].length;
             }
 
-            start_pos = cycle * NB_BYTE + pos - matchList[cycle * NB_BYTE + pos].length;
+            start_pos = cycle * NB_BYTE + pos - resolved_length;
 
             if (matchList_startpos[start_pos].valid) // Need to check is length is larger
             {
-                if (matchList_startpos[start_pos].length < matchList[cycle * NB_BYTE + pos].length)
+                if (matchList_startpos[start_pos].length < resolved_length)
                 {
                     matchList_startpos[start_pos] = matchList[cycle * NB_BYTE + pos];
+                    matchList_startpos[start_pos].length = resolved_length;
                 }
             }
             else // Nothing here can be appended
             {
                 matchList_startpos[start_pos] = matchList[cycle * NB_BYTE + pos];
+                matchList_startpos[start_pos].length = resolved_length;
             }
 
         }
