@@ -287,7 +287,7 @@ void match_detection_model::processCycle()
                 new_match[pos].valid = 1;
                 new_match[pos].offset = current_match.offset + (NB_BYTE * cell);
                 new_match[pos].length = current_match.length;
-                new_match[pos].large_counter = current_match.large_counter;
+                new_match[pos].large_counter = largest_large_counter;
             }
         }
     }
@@ -350,14 +350,14 @@ void match_detection_model::processCycle()
 
 
     cycle++;
-    if (cycle > 0 && cycle < 0) {
+    if (cycle > 55 && cycle < 65) {
         printf("CYCLE: %d\n", cycle);
         verbose = 1;
-        match_cell[35].verbose = 1;
+        match_cell[0].verbose = 1;
     }
     else {
         verbose = 0;
-        match_cell[35].verbose = 0;
+        match_cell[0].verbose = 0;
     }
 
 }
