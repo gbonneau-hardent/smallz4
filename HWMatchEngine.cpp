@@ -211,10 +211,12 @@ void match_detection_model::init()
         matchList[ii].valid = 0;
         matchList[ii].length = 0;
         matchList[ii].offset = 0;
+        matchList[ii].large_counter = 0;
 
         matchList_startpos[ii].valid = 0;
         matchList_startpos[ii].length = 0;
         matchList_startpos[ii].offset = 0;
+        matchList_startpos[ii].large_counter = 0;
     }
     cycle = 0;
 
@@ -253,6 +255,7 @@ void match_detection_model::processCycle()
     for (int pos = 0; pos < NB_BYTE; pos++)
     {
         new_match[pos].valid = 0;
+        new_match[pos].offset = 0;
         new_match[pos].length = 0;
         new_match[pos].offset = 0;
         new_match[pos].large_counter = 0;
@@ -278,7 +281,7 @@ void match_detection_model::processCycle()
     //printf("CYCLE:%d LARGEST LARGE COUNTER:%d\n", cycle, largest_large_counter);
 
     for (int cell = 0; cell < NB_CELL; cell++)
-    {
+    { 
         for (int pos = 0; pos < NB_BYTE; pos++)
         {
             current_match = match_cell[cell].getMatch(pos);
@@ -303,7 +306,7 @@ void match_detection_model::processCycle()
     {
         if (new_match[pos].valid) {
             
-            if ((vcycle >= 50) && (vcycle <= 70)) {
+            if ((vcycle >= 0) && (vcycle <= 4)) {
                 //printf("VCYCLE:%d POS:%d D:%d L:%d XC:%d\n", vcycle, cycle * NB_BYTE + pos, new_match[pos].offset, new_match[pos].length, new_match[pos].large_counter);
             }
             vcycle_inc = 1;
@@ -311,19 +314,7 @@ void match_detection_model::processCycle()
     }
     if (vcycle_inc == 1) vcycle++;
 
-    // INIT the matchlists
-    for (int pos = 0; pos < NB_BYTE; pos++)
-    {
-        matchList[pos].valid = 0;
-        matchList[pos].length = 0;
-        matchList[pos].offset = 0;
-        matchList[pos].large_counter = 0;
 
-        matchList_startpos[pos].valid = 0;
-        matchList_startpos[pos].length = 0;
-        matchList_startpos[pos].offset = 0;
-        matchList_startpos[pos].large_counter = 0;
-    }
 
     // Append Matches to matchlist
     int start_pos;
@@ -332,19 +323,19 @@ void match_detection_model::processCycle()
     for (int pos = 0; pos < NB_BYTE; pos++)
     {
 
-            //printf("NEW MATCH: pos:%d offset:%d length:%d lcnt:%d\n", new_match[pos].pos, new_match[pos].offset, new_match[pos].length, new_match[pos].large_counter);
-            if (new_match[pos].length >= 2 * NB_BYTE) // Large cnt
-            {
-                //printf("NEW LARGE MATCH: pos:%d epos:%d offset:%d length:%d lcnt:%d\n", pos, new_match[pos].pos, new_match[pos].offset, new_match[pos].length, new_match[pos].large_counter);
-                matchList[cycle * NB_BYTE + pos] = new_match[pos];
-                resolved_length = (new_match[pos].length - (2 * NB_BYTE) + pos + new_match[pos].large_counter * NB_BYTE);
-                //printf("NEW ULARGE MATCH: pos:%d epos:%d offset:%d length:%d lcnt:%d\n", pos, new_match[pos].pos, new_match[pos].offset, matchList[cycle * NB_BYTE + pos].length, new_match[pos].large_counter);
-            }
-            else // small cnt
-            {
-                matchList[cycle * NB_BYTE + pos] = new_match[pos];
-                resolved_length = new_match[pos].length;
-            }
+        //printf("NEW MATCH: pos:%d offset:%d length:%d lcnt:%d\n", cycle * NB_BYTE + pos, new_match[pos].offset, new_match[pos].length, new_match[pos].large_counter);
+        if (new_match[pos].length >= 2 * NB_BYTE) // Large cnt
+        {
+            //printf("NEW LARGE MATCH: pos:%d epos:%d offset:%d length:%d lcnt:%d\n", pos, new_match[pos].pos, new_match[pos].offset, new_match[pos].length, new_match[pos].large_counter);
+            matchList[cycle * NB_BYTE + pos] = new_match[pos];
+            resolved_length = (new_match[pos].length - (2 * NB_BYTE) + pos + new_match[pos].large_counter * NB_BYTE);
+            //printf("NEW ULARGE MATCH: pos:%d epos:%d offset:%d length:%d lcnt:%d\n", pos, new_match[pos].pos, new_match[pos].offset, matchList[cycle * NB_BYTE + pos].length, new_match[pos].large_counter);
+        }
+        else // small cnt
+        {
+            matchList[cycle * NB_BYTE + pos] = new_match[pos];
+            resolved_length = new_match[pos].length;
+        }
 
         if (new_match[pos].valid)
         {
@@ -367,6 +358,7 @@ void match_detection_model::processCycle()
         }
 
     }
+
 
 
     cycle++;
