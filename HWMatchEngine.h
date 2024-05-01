@@ -94,6 +94,7 @@ public:
 
     bool verbose = 0;
     int cycle = 0;
+    int vcycle = 0;
 
 private:
     std::shared_ptr<match_detection_model> selfReference;
