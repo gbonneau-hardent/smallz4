@@ -55,13 +55,26 @@ size_t compBytesFromIn(void* data, size_t numBytes, void* userPtr)
       if (numToTread == 0) {
          return 0;
       }
+      if (lz4Reader->srcSize == 0) {
+         lz4Reader->dataEof = true;
+         return 0;
+      }
       try {
-         lz4Reader->srcFile->read((char*)data, numToTread);
-         memcpy(lz4Reader->fileBuffer.get() + lz4Reader->dataReadSize, data, numToTread);
+         if (numToTread >= lz4Reader->srcSize) {
+            lz4Reader->srcFile->read((char*)data, lz4Reader->srcSize);
+            memset((char*)(data)+lz4Reader->srcSize, 0, numToTread-lz4Reader->srcSize);
+            memcpy(lz4Reader->fileBuffer.get() + lz4Reader->dataReadSize, data, lz4Reader->srcSize);
+            memset(lz4Reader->fileBuffer.get() + lz4Reader->dataReadSize + lz4Reader->srcSize, 0, numToTread-lz4Reader->srcSize);
+            lz4Reader->srcSize = 0;
+         }
+         else {
+            lz4Reader->srcFile->read((char*)data, numToTread);
+            memcpy(lz4Reader->fileBuffer.get() + lz4Reader->dataReadSize, data, numToTread);
+            lz4Reader->srcSize -= numToTread;
+         }
       }
       catch (std::system_error& e) {
          if (lz4Reader->srcFile->eof()) {
-            std::cout << std::endl;
             lz4Reader->dataEof = true;
             return 0;
          }
@@ -174,6 +187,7 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
       ("l,length", "Create histogram of search match length", cxxopts::value<bool>()->default_value("false"))
       ("h,histogram", "Create histogram of compression chunk size", cxxopts::value<bool>()->default_value("false"))
       ("g,gnuplot", "Friendly statistic for Gnuplot", cxxopts::value<bool>()->default_value("true"))
+      ("j,jsonl", "Input Data formatted as JSON Lines", cxxopts::value<bool>()->default_value("false"))
       ;
 
    try {
@@ -186,6 +200,7 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
       contextLZ4.corpusSet     = result["s"].as<std::string>();
       contextLZ4.threshold     = result["b"].as<double>();
       contextLZ4.matchAlgo     = result["m"].as<uint32_t>();
+      contextLZ4.isJSONL       = result["j"].as<bool>();
       contextLZ4.isRounding    = result["r"].as<bool>();
       contextLZ4.isDumpOffset  = result["o"].as<bool>();
       contextLZ4.isDumpLength  = result["l"].as<bool>();
@@ -357,15 +372,18 @@ int32_t CorpusLZ4::InitDecompression(ContextLZ4& lz4Context, LZ4DecompReader& lz
 }
 
 
-int32_t CorpusLZ4::InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, std::shared_ptr<std::ifstream> & inputFile) {
-
+int32_t CorpusLZ4::InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, std::shared_ptr<std::istream> & inputFile) 
+{
    inputFile->clear();
-   inputFile->seekg(0);
+   inputFile->seekg(0, std::ios_base::end);
 
    lz4Reader.srcFile = inputFile;
+   lz4Reader.srcSize = inputFile->tellg();
    lz4Reader.dataEof = false;
    lz4Reader.dataCompressSize = 0;
    lz4Reader.dataReadSize = 0;
+
+   inputFile->seekg(0, std::ios_base::beg);
 
    std::string fileName = lz4Reader.corpusFileSet[inputFile.get()];
    lz4Context.fileName = fileName;
@@ -454,7 +472,7 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
 const uint8_t HashKey[16] = { 0xba, 0xda, 0xfe, 0xc5, 0xcd, 0xea, 0xba, 0x4e, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xfa };
 
 
-int32_t CorpusLZ4::Deduplicate(ContextLZ4& contextLZ4, std::shared_ptr<std::ifstream> & compFile, uint32_t chunckIndex)
+int32_t CorpusLZ4::Deduplicate(ContextLZ4& contextLZ4, std::shared_ptr<std::istream> & compFile, uint32_t chunckIndex)
 {
    std::string dataLine;
    std::array<char, 4096> lastBuffer;
@@ -799,7 +817,7 @@ int32_t deduplicate(int argc, const char* argv[])
       corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
       corpusLZ4.InitStatistic(contextLZ4, lz4Reader, chunckIndex);
 
-      while (std::shared_ptr<std::ifstream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
+      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
 
          uint64_t numLoop = 0;
          corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
@@ -833,21 +851,17 @@ int32_t deduplicate(int argc, const char* argv[])
    return 0;
 }
 
-int32_t simulation(int argc, const char* argv[])
+int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
 {
-   CorpusLZ4 corpusLZ4;
-   ContextLZ4 contextLZ4;
    LZ4CompReader lz4Reader;
    LZ4DecompReader lz4DecompReader;
-
-   corpusLZ4.ParseOption(argc, argv, contextLZ4);
 
    for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
 
       corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
       corpusLZ4.InitDecompression(contextLZ4, lz4DecompReader, chunckIndex);
       
-      while (std::shared_ptr<std::ifstream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
+      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
 
          uint64_t numLoop = 0;
          corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
@@ -884,11 +898,65 @@ int32_t simulation(int argc, const char* argv[])
    return 0;
 }
 
+int32_t simulation_jsonl(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
+{
+   LZ4CompReader lz4Reader;
+   LZ4DecompReader lz4DecompReader;
+
+   for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
+
+      corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
+      corpusLZ4.InitDecompression(contextLZ4, lz4DecompReader, chunckIndex);
+
+      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
+
+         uint64_t numLoop = 0;
+         corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
+
+         while (true) {
+            if (contextLZ4.maxChunk != 0) {
+               if (numLoop++ > contextLZ4.maxChunk) {
+                  break;
+               }
+            }
+            corpusLZ4.Compress(contextLZ4, lz4Reader, chunckIndex);
+            if (lz4Reader.dataEof) {
+               break;
+            }
+            lz4DecompReader.available = lz4Reader.dataCompressSize;
+            lz4DecompReader.compBuffer = lz4Reader.compBuffer.get();
+            lz4DecompReader.decompPos = 0;
+
+            corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
+            int retCmp = std::memcmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
+
+            if (retCmp != 0) {
+               corpusLZ4.dumpDiff(lz4Reader.fileBuffer, lz4DecompReader.decompBuffer, contextLZ4.chunkSize[chunckIndex]);
+               std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
+               exit(-2);
+            }
+         }
+         corpusLZ4.DumpFileStat(contextLZ4);
+      }
+      corpusLZ4.DumpChunkStat(contextLZ4, lz4Reader, lz4DecompReader, chunckIndex);
+   }
+   corpusLZ4.Close(contextLZ4, lz4Reader, lz4DecompReader);
+
+   return 0;
+}
+
 
 int32_t main(int argc, const char* argv[])
 {
+   CorpusLZ4 corpusLZ4;
+   ContextLZ4 contextLZ4;
+
    std::cout << "Welcome Compression Infrastructure" << std::endl;
 
-   return deduplicate(argc, argv);
- //return simulation(argc, argv);
+   corpusLZ4.ParseOption(argc, argv, contextLZ4);
+
+   //if (contextLZ4.isJSONL)
+
+  //return deduplicate(argc, argv);
+   return simulation(corpusLZ4, contextLZ4);
 }

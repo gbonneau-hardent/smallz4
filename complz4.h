@@ -40,13 +40,14 @@ struct LZ4CompReader
    uint64_t dataCompressSize = 0;
    uint64_t compThreshold = 0;
    uint64_t chunkSize = 0;
+   uint64_t srcSize = 0;
    uint32_t maxCompSize = 0;
    bool     dataEof = false;
 
    std::string corpusName = "";
    std::map<uint32_t, uint32_t> compStatistic;
-   std::shared_ptr<std::ifstream> srcFile = nullptr;
-   std::map <std::ifstream*, std::string> corpusFileSet;
+   std::shared_ptr<std::istream> srcFile = nullptr;
+   std::map <std::istream*, std::string> corpusFileSet;
    std::list<std::shared_ptr<std::ifstream>> corpusList;
    std::list<std::shared_ptr<std::ifstream>>::iterator iterFile;
 };

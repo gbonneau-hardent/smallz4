@@ -20,6 +20,7 @@ typedef struct ContextLZ4
    uint32_t matchAlgo;
 
    double   threshold;
+   bool     isJSONL;
    bool     isRounding;
    bool     isDumpOffset;
    bool     isDumpLength;
@@ -77,10 +78,10 @@ public:
    virtual int32_t InitStatistic(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, uint64_t chunkIndex);
    virtual int32_t InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, uint64_t chunkIndex);
    virtual int32_t InitDecompression(ContextLZ4& lz4Context, LZ4DecompReader& lz4DecompReader, uint64_t chunkIndex);
-   virtual int32_t InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, std::shared_ptr<std::ifstream>& inputFile);
+   virtual int32_t InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, std::shared_ptr<std::istream>& inputFile);
    virtual int32_t Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, uint32_t chunckIndex);
    virtual int32_t Deduplicate(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, uint32_t chunckIndex);
-   virtual int32_t Deduplicate(ContextLZ4& contextLZ4, std::shared_ptr<std::ifstream> & compFile, uint32_t chunckIndex);
+   virtual int32_t Deduplicate(ContextLZ4& contextLZ4, std::shared_ptr<std::istream> & compFile, uint32_t chunckIndex);
    virtual int32_t Decompress(ContextLZ4& contextLZ4, LZ4DecompReader& lz4DecompReader, uint32_t chunckIndex);
    virtual int32_t DumpFileStat(ContextLZ4& contextLZ4);
    virtual int32_t DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, LZ4DecompReader& lz4DecompReader, uint32_t chunckIndex);

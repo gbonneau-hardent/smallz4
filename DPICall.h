@@ -25,7 +25,7 @@ class DPICall
       virtual int32_t ParseOption(int argc, const char* argv[], ContextLZ4& contextLZ4)                                                       = 0;
       virtual int32_t InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, uint64_t chunkIndex)                                  = 0;
       virtual int32_t InitDecompression(ContextLZ4& lz4Context, LZ4DecompReader& lz4DecompReader, uint64_t chunkIndex)                        = 0;
-      virtual int32_t InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, std::shared_ptr<std::ifstream>& inputFile)                 = 0;
+      virtual int32_t InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, std::shared_ptr<std::istream>& inputFile)                 = 0;
       virtual int32_t Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, uint32_t chunckIndex)                                        = 0;
       virtual int32_t Decompress(ContextLZ4& contextLZ4, LZ4DecompReader& lz4DecompReader, uint32_t chunckIndex)                              = 0;
       virtual int32_t DumpFileStat(ContextLZ4& contextLZ4)                                                                                    = 0;
