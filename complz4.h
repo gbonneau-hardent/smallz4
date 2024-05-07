@@ -19,10 +19,12 @@ struct LZ4CompReader
    {
       std::memset(fileBuffer.get(), 0, 131072);
       std::memset(compBuffer.get(), 0, 131072);
+      std::memset(inputBuffer.get(), 0, 131072);
    }
 
    std::shared_ptr<char> fileBuffer = std::shared_ptr<char>(new char[131072]);
    std::shared_ptr<char> compBuffer = std::shared_ptr<char>(new char[131072]);
+   std::shared_ptr<char> inputBuffer = std::shared_ptr<char>(new char[131072]);
 
    uint64_t totalChunkCount = 0;
    uint64_t totalChunkCompress = 0;
@@ -44,7 +46,6 @@ struct LZ4CompReader
    std::string corpusName = "";
    std::map<uint32_t, uint32_t> compStatistic;
    std::shared_ptr<std::ifstream> srcFile = nullptr;
-   std::shared_ptr<std::ifstream> compFile = nullptr;
    std::map <std::ifstream*, std::string> corpusFileSet;
    std::list<std::shared_ptr<std::ifstream>> corpusList;
    std::list<std::shared_ptr<std::ifstream>>::iterator iterFile;
