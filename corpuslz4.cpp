@@ -388,7 +388,9 @@ int32_t CorpusLZ4::InitReader(ContextLZ4& lz4Context, LZ4CompReader& lz4Reader, 
    std::string fileName = lz4Reader.corpusFileSet[inputFile.get()];
    lz4Context.fileName = fileName;
 
-   std::cout << "Comp File = " << fileName << std::endl;
+   if (!lz4Context.isJSONL) {
+      std::cout << "\nComp File = " << fileName << std::endl;
+   }
 
    lz4Context.ratioStat[fileName] = 0;
    lz4Context.statFileNewL4 << "# File Compressed : " << fileName << std::endl;
@@ -522,6 +524,191 @@ int32_t CorpusLZ4::Deduplicate(ContextLZ4& contextLZ4, std::shared_ptr<std::istr
    return 1;
 }
 
+std::shared_ptr<std::istream> readJsonLine(std::shared_ptr<std::istream> & compFile)
+{
+   std::shared_ptr<std::stringstream> compString;
+   std::string dataLine;
+
+   try {
+      if (!std::getline(*compFile.get(), dataLine)) {
+         return nullptr;
+      }
+   }
+   catch (std::exception& ex) {
+      std::cout << ex.what() << std::endl;
+      return nullptr;
+   }
+
+   compString = std::make_shared<std::stringstream>(dataLine);
+   return std::static_pointer_cast<std::istream>(compString);
+}
+
+
+int32_t simulation_jsonl(CorpusLZ4& corpusLZ4, ContextLZ4& contextLZ4)
+{
+   LZ4CompReader lz4Reader;
+   LZ4DecompReader lz4DecompReader;
+
+   for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
+
+      uint32_t chunckSize = contextLZ4.chunkSize[chunckIndex];
+      uint32_t subChunk = chunckSize >> 8;
+
+      corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
+      corpusLZ4.InitDecompression(contextLZ4, lz4DecompReader, chunckIndex);
+
+      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
+
+         uint64_t numLines = 0;
+         uint64_t numChunk = 0;
+
+         while (numChunk <= contextLZ4.maxChunk)
+         {
+            auto stringData = readJsonLine(compFile);
+            if (stringData == nullptr) {
+               break;
+            }
+            if (++numLines % 1000 == 0) {
+               std::cout << "\rnumLines = " << numLines << std::flush;
+            }
+            corpusLZ4.InitReader(contextLZ4, lz4Reader, stringData);
+
+            while (numChunk <= contextLZ4.maxChunk) {
+
+               corpusLZ4.Compress(contextLZ4, lz4Reader, chunckIndex);
+               if (lz4Reader.dataEof) {
+                  break;
+               }
+               lz4DecompReader.available = lz4Reader.dataCompressSize;
+               lz4DecompReader.compBuffer = lz4Reader.compBuffer.get();
+               lz4DecompReader.decompPos = 0;
+               numChunk = contextLZ4.maxChunk != 0 ? numChunk + 1 : numChunk;
+
+               corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
+               int retCmp = std::memcmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
+
+               if (retCmp != 0) {
+                  corpusLZ4.dumpDiff(lz4Reader.fileBuffer, lz4DecompReader.decompBuffer, contextLZ4.chunkSize[chunckIndex]);
+                  std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
+                  exit(-2);
+               }
+            }
+         }
+         corpusLZ4.DumpFileStat(contextLZ4);
+      }
+      corpusLZ4.DumpChunkStat(contextLZ4, lz4Reader, lz4DecompReader, chunckIndex);
+   }
+   corpusLZ4.Close(contextLZ4, lz4Reader, lz4DecompReader);
+
+   return 0;
+}
+
+
+int32_t deduplicate(CorpusLZ4& corpusLZ4, ContextLZ4& contextLZ4)
+{
+   LZ4CompReader lz4Reader;
+   std::array<char, 4096> lastBuffer;
+
+   for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
+
+      uint32_t chunckSize = contextLZ4.chunkSize[chunckIndex];
+      uint32_t subChunk = chunckSize >> 8;
+
+      corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
+      corpusLZ4.InitStatistic(contextLZ4, lz4Reader, chunckIndex);
+
+      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
+
+         corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
+         {
+            std::string dataLine;
+
+            uint64_t numLines = 0;
+
+            while (true)
+            {
+               try {
+                  if (!std::getline(*compFile.get(), dataLine)) {
+                     break;
+                  }
+               }
+               catch (std::exception& ex) {
+                  std::cout << ex.what() << std::endl;
+                  break;
+               }
+               catch (...) {
+                  break;
+               }
+
+               if (++numLines % 1000 == 0) {
+                  std::cout << "\rnumLines = " << numLines << std::flush;
+               }
+               std::memset(lastBuffer.data(), 0, 4096);
+
+               const char* data = dataLine.data();
+               const char* hashBuffer = data;
+               uint64_t lineSize = dataLine.length();
+
+               for (uint32_t index = 0; index < lineSize;) {
+
+                  if ((index + chunckSize) > lineSize) {
+                     memcpy(lastBuffer.data(), hashBuffer, lineSize - index);
+                     hashBuffer = lastBuffer.data();
+                  }
+                  for (uint32_t i = 0; i < subChunk; i++) {
+                     uint64_t hash = siphash24(hashBuffer, 256, HashKey);
+                     hashBuffer += 256;
+                     contextLZ4.mapSubChunk[hash]++;
+                  }
+                  index += chunckSize;
+               }
+            }
+         }
+      }
+      uint64_t numDuplicate = 0;
+
+      std::cout << "Number of subchunk of 256 bytes = " << contextLZ4.mapSubChunk.size() << std::endl;
+
+      for (auto& count : contextLZ4.mapSubChunk) {
+         if (count.second > 1) {
+            numDuplicate += count.second - 1;
+         }
+      }
+      std::cout << "Total deduplicated chunks = " << numDuplicate << " out of total chunks = " << contextLZ4.mapSubChunk.size() + numDuplicate << " for a space reduction of " << double(numDuplicate * 100) / double(contextLZ4.mapSubChunk.size() + numDuplicate) << " %" << std::endl;
+   }
+   return 0;
+}
+
+
+//int32_t deduplicate(CorpusLZ4& corpusLZ4, ContextLZ4& contextLZ4)
+//{
+//   LZ4CompReader lz4Reader;
+//
+//   for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
+//
+//      corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
+//      corpusLZ4.InitStatistic(contextLZ4, lz4Reader, chunckIndex);
+//
+//      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
+//
+//         uint64_t numLoop = 0;
+//         corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
+//
+//         corpusLZ4.Deduplicate(contextLZ4, compFile, chunckIndex);
+//      }
+//      uint64_t numDuplicate = 0;
+//
+//      std::cout << "Number of subchunk of 256 bytes = " << contextLZ4.mapSubChunk.size() << std::endl;
+//
+//      for (auto& count : contextLZ4.mapSubChunk) {
+//         if (count.second > 1) {
+//            numDuplicate += count.second - 1;
+//         }
+//      }
+//      std::cout << "Total deduplicated chunks = " << numDuplicate << " out of total chunks = " << contextLZ4.mapSubChunk.size() + numDuplicate << " for a space reduction of " << double(numDuplicate * 100) / double(contextLZ4.mapSubChunk.size() + numDuplicate) << " %" << std::endl;
+//   }
+//   return 0;
+//}
 
 
 int32_t CorpusLZ4::Deduplicate(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, uint32_t chunckIndex)
@@ -804,52 +991,7 @@ void CorpusLZ4::dumpDiff(const std::shared_ptr<char>& compBuffer, const std::sha
 }
 
 
-int32_t deduplicate(int argc, const char* argv[])
-{
-   CorpusLZ4 corpusLZ4;
-   ContextLZ4 contextLZ4;
-   LZ4CompReader lz4Reader;
 
-   corpusLZ4.ParseOption(argc, argv, contextLZ4);
-
-   for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
-
-      corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
-      corpusLZ4.InitStatistic(contextLZ4, lz4Reader, chunckIndex);
-
-      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
-
-         uint64_t numLoop = 0;
-         corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
-
-         corpusLZ4.Deduplicate(contextLZ4, compFile, chunckIndex);
-         //corpusLZ4.Deduplicate(contextLZ4, lz4Reader, chunckIndex);
-         //
-         //while (true) {
-         //   if (contextLZ4.maxChunk != 0) {
-         //      if (numLoop++ > contextLZ4.maxChunk) {
-         //         break;
-         //      }
-         //   }
-         //   corpusLZ4.Deduplicate(contextLZ4, lz4Reader, chunckIndex);
-         //   if (lz4Reader.dataEof) {
-         //      break;
-         //   }
-         //}
-      }
-      uint64_t numDuplicate = 0;
-
-      std::cout << "Number of subchunk of 256 bytes = " << contextLZ4.mapSubChunk.size() << std::endl;
-
-      for (auto& count : contextLZ4.mapSubChunk) {
-         if (count.second > 1) {
-            numDuplicate += count.second - 1;
-         }
-      }
-      std::cout << "Total deduplicated chunks = " << numDuplicate << " out of total chunks = " << contextLZ4.mapSubChunk.size() + numDuplicate << " for a space reduction of " << double(numDuplicate*100) / double(contextLZ4.mapSubChunk.size() + numDuplicate) << " %" << std::endl;
-   }
-   return 0;
-}
 
 int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
 {
@@ -898,53 +1040,6 @@ int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
    return 0;
 }
 
-int32_t simulation_jsonl(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
-{
-   LZ4CompReader lz4Reader;
-   LZ4DecompReader lz4DecompReader;
-
-   for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
-
-      corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
-      corpusLZ4.InitDecompression(contextLZ4, lz4DecompReader, chunckIndex);
-
-      while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
-
-         uint64_t numLoop = 0;
-         corpusLZ4.InitReader(contextLZ4, lz4Reader, compFile);
-
-         while (true) {
-            if (contextLZ4.maxChunk != 0) {
-               if (numLoop++ > contextLZ4.maxChunk) {
-                  break;
-               }
-            }
-            corpusLZ4.Compress(contextLZ4, lz4Reader, chunckIndex);
-            if (lz4Reader.dataEof) {
-               break;
-            }
-            lz4DecompReader.available = lz4Reader.dataCompressSize;
-            lz4DecompReader.compBuffer = lz4Reader.compBuffer.get();
-            lz4DecompReader.decompPos = 0;
-
-            corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
-            int retCmp = std::memcmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
-
-            if (retCmp != 0) {
-               corpusLZ4.dumpDiff(lz4Reader.fileBuffer, lz4DecompReader.decompBuffer, contextLZ4.chunkSize[chunckIndex]);
-               std::cout << "Fatal - Decompression != Original - Exiting" << std::endl;
-               exit(-2);
-            }
-         }
-         corpusLZ4.DumpFileStat(contextLZ4);
-      }
-      corpusLZ4.DumpChunkStat(contextLZ4, lz4Reader, lz4DecompReader, chunckIndex);
-   }
-   corpusLZ4.Close(contextLZ4, lz4Reader, lz4DecompReader);
-
-   return 0;
-}
-
 
 int32_t main(int argc, const char* argv[])
 {
@@ -955,8 +1050,8 @@ int32_t main(int argc, const char* argv[])
 
    corpusLZ4.ParseOption(argc, argv, contextLZ4);
 
-   //if (contextLZ4.isJSONL)
-
-  //return deduplicate(argc, argv);
+   if (contextLZ4.isJSONL) {
+      return simulation_jsonl(corpusLZ4, contextLZ4);
+   }
    return simulation(corpusLZ4, contextLZ4);
 }

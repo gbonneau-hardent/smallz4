@@ -29,6 +29,7 @@
     <ClCompile Include="DPICall.cpp" />
     <ClCompile Include="DPIWrapper.cpp" />
     <ClCompile Include="HWMatchEngine.cpp" />
+    <ClCompile Include="matchlz4.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="complz4.h" />

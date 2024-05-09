@@ -27,6 +27,7 @@
 #include <cstdlib>    // size_t
 #include <cassert>
 #include <vector>
+#include <iostream>
 
 #include "complz4.h"
 
@@ -133,15 +134,16 @@ void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARC
 
   /// create shortest output
   /** data points to block's begin; we need it to extract literals **/
-  std::vector<unsigned char> smallz4::selectBestMatches(const std::vector<Match>& matches, const unsigned char* const data)
+  const std::vector<unsigned char> smallz4::selectBestMatches(const std::vector<Match>& matches, const unsigned char* const data)
   {
-    // store encoded data
-    std::vector<unsigned char> result;
-    result.reserve(matches.size());
+     // store encoded data
+     std::vector<unsigned char> result;
+     result.reserve(matches.size());
 
     // indices of current run of literals
     size_t literalsFrom = 0;
     size_t numLiterals  = 0;
+    size_t tokenCount = 0;
 
     bool lastToken = false;
 
@@ -175,74 +177,24 @@ void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARC
         // skip unused matches
         offset += match.length;
       }
-
       // store match length (4 is implied because it's the minimum match length)
       int matchLength = int(match.length) - MinMatch;
 
       // last token has zero length
-      if (lastToken)
-        matchLength = 0;
-
-      // token consists of match length and number of literals, let's start with match length ...
-      unsigned char token = (matchLength < 15) ? (unsigned char)matchLength : 15;
-
-      // >= 15 literals ? (extra bytes to store length)
-      if (numLiterals < 15)
-      {
-        // add number of literals in higher four bits
-        token |= numLiterals << 4;
-        result.push_back(token);
+      if (lastToken) {
+         matchLength = 0;
       }
-      else
-      {
-        // set all higher four bits, the following bytes with determine the exact number of literals
-        result.push_back(token | 0xF0);
+      SmallLZ4 sequence(numLiterals, matchLength, match.distance, data + literalsFrom, lastToken);
+      auto& vecSeq = sequence.getSequence();
+      result.insert(result.end(), vecSeq.begin(), vecSeq.end());
 
-        // 15 is already encoded in token
-        int encodeNumLiterals = int(numLiterals) - 15;
-
-        // emit 255 until remainder is below 255
-        while (encodeNumLiterals >= MaxLengthCode)
-        {
-          result.push_back(MaxLengthCode);
-          encodeNumLiterals -= MaxLengthCode;
-        }
-        // and the last byte (can be zero, too)
-        result.push_back((unsigned char)encodeNumLiterals);
+         // last token doesn't have a match
+      if (lastToken) {
+         assert(numLiterals > 0);
+         break;
       }
-      // copy literals
-      if (numLiterals > 0)
-      {
-        result.insert(result.end(), data + literalsFrom, data + literalsFrom + numLiterals);
-
-        // last token doesn't have a match
-        if (lastToken)
-          break;
-
-        // reset
-        numLiterals = 0;
-      }
-
-      // distance stored in 16 bits / little endian
-      result.push_back(match.distance & 0xFF);
-      result.push_back(match.distance >> 8);
-
-      // >= 15+4 bytes matched
-      if (matchLength >= 15)
-      {
-        // 15 is already encoded in token
-        matchLength -= 15;
-        // emit 255 until remainder is below 255
-        while (matchLength >= MaxLengthCode)
-        {
-          result.push_back(MaxLengthCode);
-          matchLength -= MaxLengthCode;
-        }
-        // and the last byte (can be zero, too)
-        result.push_back((unsigned char)matchLength);
-      }
+      numLiterals = 0;
     }
-
     return result;
   }
 

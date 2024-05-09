@@ -172,7 +172,7 @@ private:
 
    static void estimateCosts(std::vector<Match>& matches);
 
-   static std::vector<unsigned char> selectBestMatches(const std::vector<Match>& matches, const unsigned char* const data);
+   static const std::vector<unsigned char> selectBestMatches(const std::vector<Match>& matches, const unsigned char* const data);
 
    Match findLongestMatch(const unsigned char* const data, uint64_t pos, uint64_t begin, uint64_t end, const Distance* const chain) const;
 
