@@ -34,6 +34,7 @@ public:
     void loadDataHistory(unsigned char* data_in, bool last_data_in, History* history_in, History* history_out);
     void compareDataHisoty();
     void updateSmallCounter();
+    void updateMatchList();
     void updateLargeCounterAndStatus();
     void processClock();
     Matchstruct getMatch(int pos);
@@ -41,11 +42,11 @@ public:
     int  small_counter[NB_BYTE];
     bool large_count_status[NB_BYTE];
     int  large_counter;
-    unsigned char data[NB_BYTE];
-    History history[NB_BYTE * 2 - 1];
-    History history_reg[NB_BYTE];
-    History history_reg_next[NB_BYTE];
-    bool comparator[NB_BYTE][NB_BYTE];
+    unsigned char data[NB_BYTE + 1];
+    History history[NB_BYTE * 2 + 1 - 1];
+    History history_reg[NB_BYTE + 1];
+    History history_reg_next[NB_BYTE + 1];
+    bool comparator[NB_BYTE][NB_BYTE + 1];
     Matchstruct match_list[NB_BYTE];
     bool last_data = 0;
 
@@ -79,13 +80,13 @@ public:
     void loadData(unsigned char* data);
     void processCycle();
 
-    unsigned char input_string[NB_BYTE];
+    unsigned char input_string[NB_BYTE + 1];
 
     match_cell_model match_cell[NB_CELL];
 
     History  history[CHUNKSIZE];
-    History  current_history[NB_BYTE];
-    History  next_history[NB_BYTE];
+    History  current_history[NB_BYTE + 1];
+    History  next_history[NB_BYTE + 1];
 
     Matchstruct* getMatchList();
     Matchstruct* getMatchListStartPos();
@@ -94,6 +95,7 @@ public:
 
     bool verbose = 0;
     int cycle = 0;
+    int vcycle = 0;
 
 private:
     std::shared_ptr<match_detection_model> selfReference;

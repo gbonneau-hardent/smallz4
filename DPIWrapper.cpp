@@ -133,7 +133,7 @@ extern "C" uint32_t GetCellMergedMatchArray(Matchstruct** match_cell_list, chand
     // for (size_t idx = 0; idx < CHUNKSIZE; idx++)
     // {
 
-    //     if (*matc(h_cell_list[idx].valid)
+    //     if ((*match_cell_list)[idx].valid)
     //     {
     //         printf("GetCellMergedMatchArray: match_cell_list[%lu].valid = %u\n", idx, (*match_cell_list)[idx].valid);
     //         printf("GetCellMergedMatchArray: match_cell_list[%lu].offset = %u\n", idx, (*match_cell_list)[idx].offset);
