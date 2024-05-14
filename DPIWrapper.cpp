@@ -50,7 +50,7 @@ extern "C" chandle DestroyCompression(chandle compression_model)
 /// @param data array of NB_BYTES bytes
 /// @param compression_model handle to the compression model
 /// @return status of casting (0 success and 1 error)
-extern "C" uint32_t PushData(unsigned char data[NB_BYTE], chandle compression_model)
+extern "C" uint32_t PushData(unsigned char data[NB_BYTE+1], chandle compression_model)
 {
     match_detection_model *match_detection = dynamic_cast<match_detection_model *>(reinterpret_cast<match_detection_model *>(compression_model));
 
