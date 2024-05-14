@@ -18,21 +18,31 @@ class LZ4Sequence
 {
 public:
 
-   LZ4Sequence(uint32_t litLength, uint32_t matchLength, uint32_t matchOffset, const unsigned char* data, bool lastToken);
+   LZ4Sequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
    virtual ~LZ4Sequence() {}
 
-   virtual const std::vector<unsigned char>& getSequence() const { return lz4Seq; }
+   virtual const std::vector<unsigned char>& getSeqData() const { return lz4Seq; }
+   virtual uint8_t  getToken() const;
+   virtual uint64_t getMatchOffset() const;
+   virtual uint64_t getMatchLength() const;
+   virtual uint64_t getLiteralLength() const;
+   virtual bool     isLastToken() const;
+   virtual const unsigned char* getLiteralData() const;
 
 protected:
 
-   static const uint32_t MaxLengthCode = 255;
+   static const uint64_t MaxLengthCode  = 255;
+   static const uint64_t MinMatchLength = 4;
 
-   uint32_t litLength;
-   uint32_t matchLength;
-   uint32_t matchOffset;
+   uint8_t  token;
+   uint64_t litLength;
+   uint64_t matchLength;
+   uint64_t matchOffset;
    bool     lastToken;
+
    const unsigned char* const data;
 
+   std::vector<unsigned char> lz4Literal;
    std::vector<unsigned char> lz4Seq;
 };
 
@@ -40,7 +50,12 @@ protected:
 class SmallLZ4 : public LZ4Sequence
 {
 public:
-   SmallLZ4(uint32_t litLength, uint32_t matchLength, uint32_t matchOffset, const unsigned char* data, bool lastToken);
+   static SmallLZ4 setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
+   static SmallLZ4 getSequence(const unsigned char* data, uint64_t blockSize);
+
+private:
+
+   SmallLZ4(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
 };
 
 

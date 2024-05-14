@@ -31,12 +31,10 @@ struct LZ4DecompReader
    std::shared_ptr<char> decompBuffer = std::shared_ptr<char>(new char[131072]);
    char* compBuffer;
 
-   uint32_t available = 0;
-   uint32_t decompPos = 0;
+   uint64_t available = 0;
+   uint64_t decompPos = 0;
    uint64_t chunkSize = 0;
 
-   std::map<uint64_t, uint64_t> chunkStat;
-   std::list<lz4Token> listSequence;
    std::map<uint64_t, uint64_t> mapDist;
    std::map<uint64_t, uint64_t> mapLength;
    std::map<uint64_t, std::map<uint64_t, uint64_t>> mapDistLength;

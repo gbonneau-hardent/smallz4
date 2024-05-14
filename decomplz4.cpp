@@ -40,7 +40,9 @@
 #include <stdlib.h> // exit()
 #include <string.h> // memcpy
 #include <cassert>
+#include <iostream>
 
+#include "matchlz4.h"
 #include "decomplz4.h"
 
 #ifndef FALSE
@@ -69,8 +71,6 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
    // 
    LZ4DecompReader* lz4Reader = reinterpret_cast<LZ4DecompReader*>(userPtr);
 
-   std::map<uint64_t, uint64_t>& chunkStat = lz4Reader->chunkStat;
-   std::list<lz4Token>& listSequence = lz4Reader->listSequence;
    std::map<uint64_t, uint64_t>& mapDist = lz4Reader->mapDist;
    std::map<uint64_t, uint64_t>& mapLength = lz4Reader->mapLength;
    std::map<uint64_t, std::map<uint64_t, uint64_t>>& mapDistLength = lz4Reader->mapDistLength;
@@ -128,27 +128,7 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
    // next free position in history[]
    unsigned int  pos = 0;
 
-   // dictionary compression is a recently introduced feature, just move its contents to the buffer
-   if (dictionary != NULL)
-   {
-      // open dictionary
-      FILE* dict;
-      fopen_s(&dict, dictionary, "rb");
-      if (!dict)
-         unlz4error("cannot open dictionary");
-
-      // get dictionary's filesize
-      fseek(dict, 0, SEEK_END);
-      long dictSize = ftell(dict);
-      // only the last 64k are relevant
-      long relevant = dictSize < 65536 ? 0 : dictSize - 65536;
-      fseek(dict, relevant, SEEK_SET);
-      if (dictSize > 65536)
-         dictSize = 65536;
-      // read it and store it at the end of the buffer
-      fread(history + HISTORY_SIZE - dictSize, 1, dictSize, dict);
-      fclose(dict);
-   }
+   struct LZ4DecompReader* decompReader = (struct LZ4DecompReader*)userPtr;
 
    // parse all blocks until blockSize == 0
    while (1)
@@ -170,117 +150,49 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
 
       if (isCompressed)
       {
-
          // decompress block
          unsigned int blockOffset = 0;
          unsigned int numWritten = 0;
-         unsigned int boundary64 = 0;
-         unsigned int lastBoundary64 = 0;
-         unsigned int numSequence64 = 0;
 
          while (blockOffset < blockSize)
          {
-            listSequence.emplace_back();
-            lz4Token& tokenSequence = listSequence.back();
+            //uint64_t origBlockOffset = blockOffset;
 
-            // get a token
-            if ((boundary64 - lastBoundary64) >= 64) {
-               if (numSequence64 == 1) {                // A sequence might be greater than 64 if all literals with no matches. In which case it count as 1.
-                  chunkStat[numSequence64]++;
-                  numSequence64 = 0;
-               }
-               else {
-                  chunkStat[numSequence64 - 1]++;
-                  numSequence64 = 1;
-               };
-               lastBoundary64 = boundary64;
-            }
-            if (numSequence64 >= 64) {
-               //std::cout << "";
-            }
-            numSequence64++;
-            unsigned char token = getByte(userPtr);
-            blockOffset++;
-            boundary64++;
+            LZ4Sequence lz4Sequence = SmallLZ4::getSequence((const uint8_t *)(decompReader->compBuffer), blockSize - blockOffset);
+            uint64_t seqSize = lz4Sequence.getSeqData().size();
 
-            tokenSequence.token = token;
-
-            // determine number of literals
-            unsigned int numLiterals = token >> 4;
-            if (numLiterals == 15)
-            {
-               // number of literals length encoded in more than 1 byte
-               unsigned char current;
-               do
-               {
-                  current = getByte(userPtr);
-                  numLiterals += current;
-                  blockOffset++;
-                  boundary64++;
-               } while (current == 255);
-            }
-            tokenSequence.literalLength = numLiterals;
-
-            blockOffset += numLiterals;
-            boundary64 += numLiterals;
+           // determine number of literals
+            unsigned int numLiterals = lz4Sequence.getLiteralLength();
 
             // copy all those literals
             if (pos + numLiterals < HISTORY_SIZE)
             {
+               const uint8_t * literalData = lz4Sequence.getLiteralData();
                // fast loop
                while (numLiterals-- > 0) {
-                  unsigned char oneLiteral = getByte(userPtr);
+                  unsigned char oneLiteral = *literalData++;
                   history[pos++] = oneLiteral;
-                  tokenSequence.literal.push_back(oneLiteral);
                }
             }
-            else
-            {
-               // slow loop
-               while (numLiterals-- > 0)
-               {
-                  history[pos++] = getByte(userPtr);
-
-                  // flush output buffer
-                  if (pos == HISTORY_SIZE)
-                  {
-                     assert(false);
-                     sendBytes(history, HISTORY_SIZE, userPtr);
-                     numWritten += HISTORY_SIZE;
-                     pos = 0;
-                  }
-               }
+            else {
+               assert(false);
             }
 
             // last token has only literals
-            if (blockOffset == blockSize)
+            if (lz4Sequence.isLastToken()) {
+               decompReader->compBuffer += seqSize;
+               decompReader->available -= seqSize;
                break;
+            }
 
             // match distance is encoded in two bytes (little endian)
-            unsigned int delta = getByte(userPtr);
-            delta |= (unsigned int)getByte(userPtr) << 8;
+            unsigned int delta = lz4Sequence.getMatchOffset();
             // zero isn't allowed
             if (delta == 0)
                unlz4error("invalid offset");
-            blockOffset += 2;
-            boundary64 += 2;
 
             // match length (always >= 4, therefore length is stored minus 4)
-            unsigned int matchLength = 4 + (token & 0x0F);
-
-            if (matchLength == 4 + 0x0F)
-            {
-               unsigned char current;
-               do // match length encoded in more than 1 byte
-               {
-                  current = getByte(userPtr);
-                  matchLength += current;
-                  blockOffset++;
-                  boundary64++;
-               } while (current == 255);
-            }
-            tokenSequence.offset = delta;
-            tokenSequence.matchLength = matchLength;
+            unsigned int matchLength = lz4Sequence.getMatchLength();
 
             mapDist[delta]++;
             mapLength[matchLength]++;
@@ -292,41 +204,24 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
             if (pos + matchLength < HISTORY_SIZE && referencePos + matchLength < HISTORY_SIZE)
             {
                // read/write continuous block (no wrap-around at the end of history[])
-               // fast copy
                if (pos >= referencePos + matchLength || referencePos >= pos + matchLength)
                {
                   // non-overlapping
                   memcpy(history + pos, history + referencePos, matchLength);
                   pos += matchLength;
                }
-               else
-               {
+               else {
                   // overlapping, slower byte-wise copy
                   while (matchLength-- > 0)
                      history[pos++] = history[referencePos++];
                }
             }
-            else
-            {
-               // either read or write wraps around at the end of history[]
-               while (matchLength-- > 0)
-               {
-                  // copy single byte
-                  history[pos++] = history[referencePos++];
-
-                  // cannot write anymore ? => wrap around
-                  if (pos == HISTORY_SIZE)
-                  {
-                     // flush output buffer
-                     assert(false);
-                     sendBytes(history, HISTORY_SIZE, userPtr);
-                     numWritten += HISTORY_SIZE;
-                     pos = 0;
-                  }
-                  // wrap-around of read location
-                  referencePos %= HISTORY_SIZE;
-               }
+            else {
+               assert(false);
             }
+            decompReader->available -= seqSize;
+            decompReader->compBuffer += seqSize;
+            blockOffset += seqSize;
          }
 
          // all legacy blocks must be completely filled - except for the last one
