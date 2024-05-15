@@ -23,9 +23,13 @@
 
 #pragma once
 
+#pragma push_macro("NDEBUG")
+#undef NDEBUG
+#include <cassert>
+#pragma pop_macro("NDEBUG")
+
 #include <inttypes.h> // uint16_t, uint32_t, ...
 #include <cstdlib>    // size_t
-#include <cassert>
 #include <vector>
 #include <iostream>
 

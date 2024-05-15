@@ -1,4 +1,8 @@
+#pragma push_macro("NDEBUG")
+#undef NDEBUG
 #include <cassert>
+#pragma pop_macro("NDEBUG")
+
 #include <iostream>
 #include "matchlz4.h"
 

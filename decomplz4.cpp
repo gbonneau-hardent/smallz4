@@ -36,10 +36,15 @@
 // suppress warnings when compiled by Visual C++
 //#define _CRT_SECURE_NO_WARNINGS
 
+#pragma push_macro("NDEBUG")
+#undef NDEBUG
+#include <cassert>
+#pragma pop_macro("NDEBUG")
+
+
 #include <stdio.h>  // stdin/stdout/stderr, fopen, ...
 #include <stdlib.h> // exit()
 #include <string.h> // memcpy
-#include <cassert>
 #include <iostream>
 
 #include "matchlz4.h"
@@ -126,7 +131,7 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
   // contains the latest decoded data
    unsigned char history[HISTORY_SIZE];
    // next free position in history[]
-   unsigned int  pos = 0;
+   uint64_t pos = 0;
 
    struct LZ4DecompReader* decompReader = (struct LZ4DecompReader*)userPtr;
 
@@ -151,18 +156,19 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
       if (isCompressed)
       {
          // decompress block
-         unsigned int blockOffset = 0;
-         unsigned int numWritten = 0;
+         uint64_t blockOffset = 0;
+         uint64_t numWritten = 0;
 
          while (blockOffset < blockSize)
          {
             //uint64_t origBlockOffset = blockOffset;
 
             LZ4Sequence lz4Sequence = SmallLZ4::getSequence((const uint8_t *)(decompReader->compBuffer), blockSize - blockOffset);
-            uint64_t seqSize = lz4Sequence.getSeqData().size();
 
-           // determine number of literals
-            unsigned int numLiterals = lz4Sequence.getLiteralLength();
+            uint64_t seqSize = lz4Sequence.getSeqData().size();
+            uint64_t distance = lz4Sequence.getMatchOffset();
+            uint64_t numLiterals = lz4Sequence.getLiteralLength();
+            uint64_t matchLength = lz4Sequence.getMatchLength();
 
             // copy all those literals
             if (pos + numLiterals < HISTORY_SIZE)
@@ -184,22 +190,17 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
                decompReader->available -= seqSize;
                break;
             }
-
-            // match distance is encoded in two bytes (little endian)
-            unsigned int delta = lz4Sequence.getMatchOffset();
             // zero isn't allowed
-            if (delta == 0)
+            if (distance == 0) {
+               assert(false);
                unlz4error("invalid offset");
-
-            // match length (always >= 4, therefore length is stored minus 4)
-            unsigned int matchLength = lz4Sequence.getMatchLength();
-
-            mapDist[delta]++;
+            }
+            mapDist[distance]++;
             mapLength[matchLength]++;
-            mapDistLength[delta][matchLength]++;
+            mapDistLength[distance][matchLength]++;
 
             // copy match
-            unsigned int referencePos = (pos >= delta) ? (pos - delta) : (HISTORY_SIZE + pos - delta);
+            uint64_t referencePos = (pos >= distance) ? (pos - distance) : (HISTORY_SIZE + pos - distance);
             // start and end within the current 64k block ?
             if (pos + matchLength < HISTORY_SIZE && referencePos + matchLength < HISTORY_SIZE)
             {

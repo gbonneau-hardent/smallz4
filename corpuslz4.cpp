@@ -1,5 +1,10 @@
 // corpuslz4.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
+#pragma push_macro("NDEBUG")
+#undef NDEBUG
+#include <cassert>
+#pragma pop_macro("NDEBUG")
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -11,7 +16,6 @@
 #include <bitset>
 #include <iomanip>
 #include <array>
-#include <cassert>
 
 #include <sys/stat.h>
 
@@ -125,7 +129,7 @@ static unsigned char decompByteFromIn(void* userPtr) // parameter "userPtr" not 
 }
 
 /// write a block of bytes
-static void decompBytesToOut(const unsigned char* data, unsigned int numBytes, void* userPtr)
+static void decompBytesToOut(const unsigned char* data, uint64_t numBytes, void* userPtr)
 {
    struct LZ4DecompReader* user = (struct LZ4DecompReader*)userPtr;
    if (data != nullptr && numBytes > 0) {
@@ -353,7 +357,7 @@ int32_t CorpusLZ4::InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Rea
 
    lz4Reader.iterFile = lz4Reader.corpusList.begin();
    lz4Reader.compStatistic.clear();
-   lz4Reader.compThreshold = (double)lz4Context.chunkSize[chunkIndex] / lz4Context.threshold;
+   lz4Reader.compThreshold = uint64_t((double)lz4Context.chunkSize[chunkIndex] / lz4Context.threshold);
    lz4Reader.dataChunkSize = lz4Context.chunkSize[chunkIndex];
 
    return 0;
@@ -441,11 +445,11 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
       lz4Reader.totalSizeCompressStat += roundCompressSize;
 
       ratio = (((double)contextLZ4.chunkSize[chunckIndex] / (double)roundCompressSize)) * 100.0;
-      intRatio = ratio;
+      intRatio = uint64_t(ratio);
       intRatio = intRatio / 5;
       intRatio = intRatio * 5;
       double compChunckSize = (double)contextLZ4.chunkSize[chunckIndex] / ((double)intRatio / 100.0);
-      intCompressSize = compChunckSize;
+      intCompressSize = uint64_t(compChunckSize);
 
       // We want to know which files from the corpus set yield the greatest ratio in some range.
       if ((ratio / 100.0 > 3.75) && (ratio / 100.0 < 4.75)) {
@@ -453,7 +457,7 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
       }
       lz4Reader.compStatistic[uint32_t(intCompressSize)]++;
    }
-   (*(contextLZ4.chunkAllCompStat)[chunckIndex])[roundCompressSize]++;
+   (*(contextLZ4.chunkAllCompStat)[chunckIndex])[uint32_t(roundCompressSize)]++;
    lz4Reader.totalChunkCount++;
    lz4Reader.totalSizeRead += lz4Reader.dataReadSize;
    lz4Reader.totalSizeCompress += roundCompressSize;
@@ -461,11 +465,11 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
    if (roundCompressSize <= lz4Reader.compThreshold) {
 
       ratioLoss = 100.0 * (ratio - ratioNewLZ4) / ratio;
-      int64_t intNewLZ4Ratio = ratioLoss * 10.0;
+      int64_t intNewLZ4Ratio = int64_t(ratioLoss * 10.0);
       ratioLoss = double(intNewLZ4Ratio) / 10.0;
 
-      (contextLZ4.compLossCloud).push_back({ uint32_t(ratio), uint32_t(ratioNewLZ4) });
-      (contextLZ4.compLossStatistic)[intNewLZ4Ratio]++;
+      (contextLZ4.compLossCloud).push_back({uint32_t(ratio), uint32_t(ratioNewLZ4) });
+      (contextLZ4.compLossStatistic)[uint32_t(intNewLZ4Ratio)]++;
    }
    return 1;
 }
@@ -926,8 +930,8 @@ int32_t CorpusLZ4::DumpChunkStat(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reade
 
    for (uint32_t i = 1; i <= maxChunkCompSize; i++) {
    
-      uint32_t numChunk = (*contextLZ4.chunkAllCompStat[chunckIndex])[i] + remainer;
-      uint32_t avgChunk = numChunk / divider;
+      uint64_t numChunk = (*contextLZ4.chunkAllCompStat[chunckIndex])[i] + remainer;
+      uint64_t avgChunk = numChunk / divider;
       remainer = numChunk - avgChunk * divider;
 
       contextLZ4.statFile << std::fixed << std::setprecision(2) << i << "," << (*contextLZ4.chunkAllCompStat[chunckIndex])[i] << "," << avgChunk << std::endl;
