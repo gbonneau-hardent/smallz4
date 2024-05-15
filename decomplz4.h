@@ -10,7 +10,7 @@
 // read one byte from input, see getByteFromIn()  for a basic implementation
 typedef unsigned char (*DECOMP_GET_BYTE)  (void* userPtr);
 // write several bytes,      see sendBytesToOut() for a basic implementation
-typedef void          (*DECOMP_SEND_BYTES)(const unsigned char*, unsigned int, void* userPtr);
+typedef void          (*DECOMP_SEND_BYTES)(const unsigned char*, uint64_t, void* userPtr);
 
 void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr);
 void unlz4error(const char* msg);
@@ -31,12 +31,10 @@ struct LZ4DecompReader
    std::shared_ptr<char> decompBuffer = std::shared_ptr<char>(new char[131072]);
    char* compBuffer;
 
-   uint32_t available = 0;
-   uint32_t decompPos = 0;
+   uint64_t available = 0;
+   uint64_t decompPos = 0;
    uint64_t chunkSize = 0;
 
-   std::map<uint64_t, uint64_t> chunkStat;
-   std::list<lz4Token> listSequence;
    std::map<uint64_t, uint64_t> mapDist;
    std::map<uint64_t, uint64_t> mapLength;
    std::map<uint64_t, std::map<uint64_t, uint64_t>> mapDistLength;

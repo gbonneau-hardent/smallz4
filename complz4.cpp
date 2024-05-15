@@ -23,9 +23,13 @@
 
 #pragma once
 
+#pragma push_macro("NDEBUG")
+#undef NDEBUG
+#include <cassert>
+#pragma pop_macro("NDEBUG")
+
 #include <inttypes.h> // uint16_t, uint32_t, ...
 #include <cstdlib>    // size_t
-#include <cassert>
 #include <vector>
 #include <iostream>
 
@@ -184,8 +188,8 @@ void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARC
       if (lastToken) {
          matchLength = 0;
       }
-      SmallLZ4 sequence(numLiterals, matchLength, match.distance, data + literalsFrom, lastToken);
-      auto& vecSeq = sequence.getSequence();
+      SmallLZ4 sequence = SmallLZ4::setSequence(numLiterals, matchLength, match.distance, data + literalsFrom, lastToken);
+      auto& vecSeq = sequence.getSeqData();
       result.insert(result.end(), vecSeq.begin(), vecSeq.end());
 
          // last token doesn't have a match
