@@ -150,7 +150,7 @@ extern "C" uint32_t GetCellMergedMatchArray(Matchstruct** match_cell_list, chand
 /// @param match_list match list of all the cell merged
 /// @param compression_model handle to the compression model
 /// @return status of casting (0 success and 1 error)
-extern "C" uint32_t GetMatch(Matchstruct** match_list, chandle compression_model)
+extern "C" uint32_t GetStartPosConvMatchArray(Matchstruct** match_list, chandle compression_model)
 {
     match_detection_model *match_detection = dynamic_cast<match_detection_model *>(reinterpret_cast<match_detection_model *>(compression_model));
 
@@ -164,10 +164,10 @@ extern "C" uint32_t GetMatch(Matchstruct** match_list, chandle compression_model
     // {
     //     if (*match_list[i].valid)
     //     {
-    //         printf("GetMatch: match_list[%llu].valid = %u\n", i, *match_list[i].valid);
-    //         printf("GetMatch: match_list[%llu].offset = %u\n", i, *match_list[i].offset);
-    //         printf("GetMatch: match_list[%llu].length = %u\n", i, *match_list[i].length);
-    //         printf("GetMatch: match_list[%llu].large_counter = %u\n", i, *match_list[i].large_counter);
+    //         printf("GetStartPosConvMatchArray: match_list[%llu].valid = %u\n", i, *match_list[i].valid);
+    //         printf("GetStartPosConvMatchArray: match_list[%llu].offset = %u\n", i, *match_list[i].offset);
+    //         printf("GetStartPosConvMatchArray: match_list[%llu].length = %u\n", i, *match_list[i].length);
+    //         printf("GetStartPosConvMatchArray: match_list[%llu].large_counter = %u\n", i, *match_list[i].large_counter);
     //     }
 
     // }
