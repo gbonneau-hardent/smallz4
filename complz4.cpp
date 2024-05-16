@@ -188,8 +188,8 @@ void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARC
       if (lastToken) {
          matchLength = 0;
       }
-      SmallLZ4 sequence = SmallLZ4::setSequence(numLiterals, matchLength, match.distance, data + literalsFrom, lastToken);
-      auto& vecSeq = sequence.getSeqData();
+      std::shared_ptr<LZ4Sequence> sequence = SmallLZ4::setSequence(numLiterals, matchLength, match.distance, data + literalsFrom, lastToken);
+      auto& vecSeq = sequence->getSeqData();
       result.insert(result.end(), vecSeq.begin(), vecSeq.end());
 
          // last token doesn't have a match

@@ -84,7 +84,7 @@ extern "C" uint32_t GetCellMatchArray(Matchstruct match_cell_list [CHUNKSIZE], c
     {
         for (size_t pos = 0; pos < NB_BYTE; pos++)
         {
-            uint32_t pos1d = pos+(cell*NB_BYTE);
+            uint64_t pos1d = pos+(cell*NB_BYTE);
             match_cell_list[pos1d] = match_detection->match_cell[cell].getMatch(pos);
 
             // if ((*match_cell_list)[pos1d].valid)

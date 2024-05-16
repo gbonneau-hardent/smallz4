@@ -1006,6 +1006,7 @@ int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
 
       corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
       corpusLZ4.InitDecompression(contextLZ4, lz4DecompReader, chunckIndex);
+      corpusLZ4.InitStatistic(contextLZ4, lz4Reader, chunckIndex);
       
       while (std::shared_ptr<std::istream> compFile = corpusLZ4.getNextFile(lz4Reader)) {
 

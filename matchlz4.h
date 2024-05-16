@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <memory>
 
 typedef uint64_t Length;   // a block can be up to 4 MB, so uint32_t would suffice but uint64_t is quite a bit faster on my x64 machine
 typedef uint16_t Distance; // matches must start within the most recent 64k
@@ -50,12 +51,13 @@ protected:
 class SmallLZ4 : public LZ4Sequence
 {
 public:
-   static SmallLZ4 setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
-   static SmallLZ4 getSequence(const unsigned char* data, uint64_t blockSize);
+   static std::shared_ptr<LZ4Sequence> setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
+   static std::shared_ptr<LZ4Sequence> getSequence(const unsigned char* data, uint64_t blockSize);
+
+   SmallLZ4(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
 
 private:
 
-   SmallLZ4(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
 };
 
 

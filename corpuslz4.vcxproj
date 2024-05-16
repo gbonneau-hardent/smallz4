@@ -41,6 +41,7 @@
     <ClInclude Include="DPIWrapper.h" />
     <ClInclude Include="HWMatchEngine.h" />
     <ClInclude Include="matchlz4.h" />
+    <ClInclude Include="RambusLZ4.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="violon_3_no_log_session.txt" />
