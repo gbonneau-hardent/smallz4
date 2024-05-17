@@ -125,13 +125,15 @@ private:
 
    /// how many matches are checked in findLongestMatch, lower values yield faster encoding at the cost of worse compression ratio
    unsigned short maxChainLength;
+   const std::shared_ptr<LZ4Factory>& lz4Factory;
 
    //  ----- code -----
 
 
    /// create new compressor (only invoked by lz4)
-   explicit smallz4(unsigned short newMaxChainLength = MaxChainLength)
-      : maxChainLength(newMaxChainLength) // => no limit, but can be changed by setMaxChainLength
+   explicit smallz4(const std::shared_ptr<LZ4Factory>& in_lz4Factory, unsigned short newMaxChainLength = MaxChainLength)
+      : lz4Factory(in_lz4Factory)
+      , maxChainLength(newMaxChainLength) // => no limit, but can be changed by setMaxChainLength
    {
    };
 
@@ -154,7 +156,7 @@ private:
       
  
    /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm,
+   static void lz4(const std::shared_ptr<LZ4Factory>& lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm,
       unsigned short maxChainLength,
       const std::vector<unsigned char>& dictionary, // predefined dictionary
       bool useLegacyFormat = false,                 // old format is 7 bytes smaller if input < 8 MB
@@ -164,15 +166,15 @@ private:
 private:
 
    /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-   static void lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength = MaxChainLength, bool useLegacyFormat = false, void* userPtr = NULL);
+   static void lz4(const std::shared_ptr<LZ4Factory>& lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength = MaxChainLength, bool useLegacyFormat = false, void* userPtr = NULL);
 
-   void compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const;
+   void compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal);
 
    //void hw_model_compress(std::vector<smallz4::Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock) const;
 
    static void estimateCosts(std::vector<Match>& matches);
 
-   static const std::vector<unsigned char> selectBestMatches(const std::vector<Match>& matches, const unsigned char* const data);
+   const std::vector<unsigned char> selectBestMatches(const std::vector<Match>& matches, const unsigned char* const data);
 
    Match findLongestMatch(const unsigned char* const data, uint64_t pos, uint64_t begin, uint64_t end, const Distance* const chain) const;
 

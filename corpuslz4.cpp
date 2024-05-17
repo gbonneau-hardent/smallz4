@@ -247,6 +247,8 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
 
    contextLZ4.chunkAllCompStat.resize(contextLZ4.chunkSize.size(), nullptr);
 
+   contextLZ4.lz4Factory = std::make_shared<SmallLZ4Factory>();  // TODO: Need to have option to choose which factory we want default is SmallLZ4
+
    return 0;
 }
 
@@ -418,7 +420,7 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
    lz4Reader.dataCompressSize = 0;
    lz4Reader.dataReadSize = 0;
 
-   smallz4::lz4(compBytesFromIn, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
+   smallz4::lz4(contextLZ4.lz4Factory, compBytesFromIn, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
 
    if (lz4Reader.dataEof) {
       return 0;
@@ -751,7 +753,7 @@ int32_t CorpusLZ4::Deduplicate(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader,
 
 int32_t CorpusLZ4::Decompress(ContextLZ4& contextLZ4, LZ4DecompReader& lz4DecompReader, uint32_t chunckIndex)
 {
-   unlz4_userPtr(decompByteFromIn, decompBytesToOut, nullptr, &lz4DecompReader);
+   unlz4_userPtr(contextLZ4.lz4Factory, decompByteFromIn, decompBytesToOut, nullptr, &lz4DecompReader);
 
    return 0;
 }

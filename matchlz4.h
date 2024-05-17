@@ -30,10 +30,10 @@ public:
    virtual bool     isLastToken() const;
    virtual const unsigned char* getLiteralData() const;
 
-protected:
-
-   static const uint64_t MaxLengthCode  = 255;
+   static const uint64_t MaxLengthCode = 255;
    static const uint64_t MinMatchLength = 4;
+
+protected:
 
    uint8_t  token;
    uint64_t litLength;
@@ -48,16 +48,31 @@ protected:
 };
 
 
-class SmallLZ4 : public LZ4Sequence
+class LZ4Factory
 {
 public:
-   static std::shared_ptr<LZ4Sequence> setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
-   static std::shared_ptr<LZ4Sequence> getSequence(const unsigned char* data, uint64_t blockSize);
 
-   SmallLZ4(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
+   virtual std::shared_ptr<LZ4Sequence> setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken) = 0;
+   virtual std::shared_ptr<LZ4Sequence> getSequence(const unsigned char* data, uint64_t blockSize) = 0;
+};
+
+
+class SmallLZ4Factory : public LZ4Factory
+{
+public:
+   virtual std::shared_ptr<LZ4Sequence> setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
+   virtual std::shared_ptr<LZ4Sequence> getSequence(const unsigned char* data, uint64_t blockSize);
 
 private:
 
+};
+
+
+class SmallLZ4 : public LZ4Sequence
+{
+public:
+
+   SmallLZ4(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken);
 };
 
 

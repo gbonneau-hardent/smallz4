@@ -42,15 +42,15 @@ const char* const smallz4::getVersion()
 
 
 /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
+void smallz4::lz4(const std::shared_ptr<LZ4Factory> & lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
 {
-   smallz4 obj(maxChainLength);
+   smallz4 obj(lz4Factory, maxChainLength);
    obj.compress(getBytes, sendBytes, matchAlgorithm, dictionary, useLegacyFormat, userPtr, isLess64Illegal);
 };
 
-void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, bool useLegacyFormat, void* userPtr)
+void smallz4::lz4(const std::shared_ptr<LZ4Factory>& lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, bool useLegacyFormat, void* userPtr)
 {
-   lz4(getBytes, sendBytes, matchAlgorithm, maxChainLength, std::vector<unsigned char>(), useLegacyFormat, userPtr);
+   lz4(lz4Factory, getBytes, sendBytes, matchAlgorithm, maxChainLength, std::vector<unsigned char>(), useLegacyFormat, userPtr);
 };
 
   /// find longest match of data[pos] between data[begin] and data[end], use match chain
@@ -188,7 +188,7 @@ void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARC
       if (lastToken) {
          matchLength = 0;
       }
-      std::shared_ptr<LZ4Sequence> sequence = SmallLZ4::setSequence(numLiterals, matchLength, match.distance, data + literalsFrom, lastToken);
+      std::shared_ptr<LZ4Sequence> sequence = lz4Factory->setSequence(numLiterals, matchLength, match.distance, data + literalsFrom, lastToken);
       auto& vecSeq = sequence->getSeqData();
       result.insert(result.end(), vecSeq.begin(), vecSeq.end());
 
@@ -401,7 +401,7 @@ void smallz4::lz4(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARC
 
 
   /// compress everything in input stream (accessed via getByte) and write to output stream (via send), improve compression with a predefined dictionary
-  void smallz4::compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal) const
+  void smallz4::compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
   {
      // ==================== write header ====================
      if (useLegacyFormat)

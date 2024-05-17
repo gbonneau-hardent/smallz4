@@ -12,7 +12,7 @@ typedef unsigned char (*DECOMP_GET_BYTE)  (void* userPtr);
 // write several bytes,      see sendBytesToOut() for a basic implementation
 typedef void          (*DECOMP_SEND_BYTES)(const unsigned char*, uint64_t, void* userPtr);
 
-void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr);
+void unlz4_userPtr(const std::shared_ptr<LZ4Factory> & lz4Factory, DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr);
 void unlz4error(const char* msg);
 
 typedef struct lz4Token

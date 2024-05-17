@@ -70,7 +70,7 @@ void unlz4error(const char* msg)
 // ==================== LZ4 DECOMPRESSOR ====================
 
 /// decompress everything in input stream (accessed via getByte) and write to output stream (via sendBytes)
-void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr)
+void unlz4_userPtr(const std::shared_ptr<LZ4Factory> & lz4Factory, DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr)
 {
    // signature
    // 
@@ -163,7 +163,7 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
          {
             //uint64_t origBlockOffset = blockOffset;
 
-            std::shared_ptr<LZ4Sequence> lz4Sequence = SmallLZ4::getSequence((const uint8_t *)(decompReader->compBuffer), blockSize - blockOffset);
+            std::shared_ptr<LZ4Sequence> lz4Sequence = lz4Factory->getSequence((const uint8_t *)(decompReader->compBuffer), blockSize - blockOffset);
 
             uint64_t seqSize = lz4Sequence->getSeqData().size();
             uint64_t distance = lz4Sequence->getMatchOffset();
