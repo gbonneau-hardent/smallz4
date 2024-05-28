@@ -47,6 +47,7 @@
     <Text Include="violon_3_no_log_session.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="plotviolin.gp" />
     <None Include="violon_multiscale_no_log_session.gp" />
     <None Include="violon_no_log_session.gp" />
   </ItemGroup>

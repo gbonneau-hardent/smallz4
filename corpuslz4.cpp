@@ -1001,10 +1001,12 @@ void CorpusLZ4::dumpDiff(const std::shared_ptr<char>& compBuffer, const std::sha
 
 int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
 {
-   LZ4CompReader lz4Reader;
-   LZ4DecompReader lz4DecompReader;
-
    for (uint32_t chunckIndex = 0; chunckIndex < contextLZ4.chunkSize.size(); chunckIndex++) {
+
+      LZ4CompReader lz4Reader;
+      LZ4DecompReader lz4DecompReader;
+
+      std::cout << "Processing chunk size = " << contextLZ4.chunkSize[chunckIndex] << std::endl;
 
       corpusLZ4.InitCompression(contextLZ4, lz4Reader, chunckIndex);
       corpusLZ4.InitDecompression(contextLZ4, lz4DecompReader, chunckIndex);
@@ -1017,7 +1019,7 @@ int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
 
          while (true) {
             if (contextLZ4.maxChunk != 0) {
-               if (numLoop++ > contextLZ4.maxChunk) {
+               if (numLoop++ >= contextLZ4.maxChunk) {
                   break;
                }
             }
@@ -1041,9 +1043,8 @@ int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
          corpusLZ4.DumpFileStat(contextLZ4);
       }
       corpusLZ4.DumpChunkStat(contextLZ4, lz4Reader, lz4DecompReader, chunckIndex);
+      corpusLZ4.Close(contextLZ4, lz4Reader, lz4DecompReader);
    }
-   corpusLZ4.Close(contextLZ4, lz4Reader, lz4DecompReader);
-
    return 0;
 }
 

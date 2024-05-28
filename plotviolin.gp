@@ -9,6 +9,8 @@ isPosBottom = 0
 isPosTop = 1
 isYorigTop = 1
 isCurve  = 0
+isUseMaxSample = 0
+
 
 if(isPngTerm) {
     set term 'png' enhanced truecolor size 1010,1000
@@ -20,12 +22,14 @@ if(GPVAL_TERM eq 'qt') {
 
     corpusTitle = "Silesia Corpus"
 
-    ARGC = 6
-    ARG1 = 'C:\Users\gbonneau\git\smallz4'
+    ARGC = 9
     
     corpusTitle = "Random Corpus"
     
     if(ARGC != 2) {
+
+	    ARG1 = 'C:\Users\gbonneau\git\smallz4\github_stat
+        #ARG1 = 'C:\Users\gbonneau\git\smallz4'
 
         #ARG6 = "lz4_canterbury_corpus.txt_4096.csv"
         #ARG5 = "lz4_silicia_corpus.txt_4096.csv"    
@@ -33,11 +37,14 @@ if(GPVAL_TERM eq 'qt') {
         #ARG3 = "lz4_enwik9.txt_4096.csv"
         #ARG2 = "lz4_random.txt_4096.csv"
 
-        ARG6 = "lz4_enwik9.txt_4096.csv"
-        ARG5 = "lz4_pubmed_corpus.txt_4096.csv"
-        ARG4 = "lz4_github_corpus.txt_4096.csv"
-        ARG3 = "lz4_silicia_corpus_dickens.txt_4096.csv"
-        ARG2 = "lz4_silicia_corpus_din.txt_4096.csv"
+        ARG2 = "Github_16_MB_4096.csv"
+        ARG3 = "Github_32_MB_4096.csv"
+        ARG4 = "Github_64_MB_4096.csv"
+        ARG5 = "Github_128_MB_4096.csv"
+        ARG6 = "Github_256_MB_4096.csv"
+        ARG7 = "Github_512_MB_4096.csv"
+        ARG8 = "Github_1_GB_4096.csv"
+        ARG9 = "Github_2_GB_4096.csv"
 
         #ARG4 = "lz4_Wikipedia Corpus.txt_4096.csv"
         #ARG3 = "lz4_Wikipedia Corpus.txt_2048.csv"
@@ -45,8 +52,13 @@ if(GPVAL_TERM eq 'qt') {
     }
     
     if(ARGC == 2) {
-        ARG2 = "lz4_silicia_corpus.txt_4096.csv" 
-        ARG2 = "lz4_enwik9.txt_4096.csv"
+
+	   ARG1 = 'C:\Users\gbonneau\git\smallz4'
+
+       #ARG2 = "lz4_silicia_corpus.txt_4096.csv" 
+       #ARG2 = "lz4_github_corpus.txt_4096_data_20_3GB.csv"
+	   #ARG2 = "lz4_github_corpus.txt_4096_data_20_240MB.csv"
+	   ARG2 = "lz4_github_data_36_time_1601285197.txt_1024.csv"
     }
     print "Termninal QT"
 }
@@ -73,13 +85,14 @@ numARG = (9 < ARGC) ? 8 : ARGC-1
 
 do for [i=1:numARG] {
   eval sprintf("corpusFiles[%d] = ARG%d", i, i+1);
-  name = corpusFiles[i][strstrt(corpusFiles[i], "lz4_")+4:]
-  corpusNames[i] = name[:strstrt(name, ".txt")-1]
+  corpusNames[i] = corpusFiles[i][:strstrt(corpusFiles[i], ".")-1]
 }
+print corpusNames
 cd ARG1
 
 ymax = 0
 maxBlockSize = 0
+maxSample = 0
 bias = 0
 
 fmt = "% 14s :% 6.2f"
@@ -113,6 +126,11 @@ do for [i=1:ARGC-1] {
 
    print sprintf("Processing file: %s", corpusFiles[i])
 
+# This will compute the block size when the data is read from the statistic file. This can be computed from the statistic that 
+# include a row for every possible compression size of a block from 1 to block size + header. Note that expansion is possible when a block
+# is all literal. In which case the chunk increase by the header size: 15. Maximum block size is computed for the case of multiple
+# violon plot that don't have the same block size for compression.
+
    stats corpusFiles[i] nooutput
    numRecord = STATS_records
    chunkSize = numRecord - 15.0
@@ -123,6 +141,10 @@ do for [i=1:ARGC-1] {
 
    array M[numRecord]
    array N[numRecord]
+
+# First column is the value of the compression size for a block. Values range from 1 to block size
+# Third column is the frequency of apperance of the compression size for the full file. Application does normalise this frequency
+# to prevent a frequency value that is too large when the file data contains many GBytes.
    
    stats corpusFiles[i] using (M[int($0 + 1)] = $1) name "M" nooutput
    stats corpusFiles[i] using (N[int($0 + 1)] = $3) name "N" nooutput
@@ -131,6 +153,8 @@ do for [i=1:ARGC-1] {
    array Bias_M_x_N[numRecord]
    
    bias = chunkSize / 2
+
+# The next computation is used to create intermediate value array to compute statistic: mean, variance, median....
    
    stats N using (M_x_N[int($0 + 1)] = N[int($0 + 1)] * M[int($0 + 1)]) name "M_x_N" nooutput
    stats N using (M[$0 + 1] <= bias ? N[int($0 + 1)] * M[int($0 + 1)] : N[int($0 + 1)] * chunkSize) name "M_x_N_B" nooutput
@@ -164,6 +188,11 @@ do for [i=1:ARGC-1] {
    posMin[i] = numRecord
    
    array cumulMedian[numRecord]
+
+# This will loop through every row of the statistic file and will be used to compute the
+# median ratio, the upper quartile ratio and the lower quartible ratio. This loop is
+# based on a similar computation done by the Excel Spreadsheet at this URL:
+# https://rambus.sharepoint.com/:x:/r/sites/spointerconnectbu/Departments/Architecture/Data%20Compression/Statistical%20Analysis/lz4_silicia_corpus.txt_4096_stat.xlsx
    
    do for[col = 1:numRecord]{
    
@@ -201,6 +230,15 @@ do for [i=1:ARGC-1] {
    maxRatioValue = chunkSize / posMin[i]
    minRatioValue = chunkSize / posMax[i]
    
+# This will create a distribution of the statistic with a sample for every block that was compressed. The value
+# of the sample is the compression size of the block. The number of sample created for every row is the frequency
+# retrieved from the output statistic.
+
+# WARNING. The size array of V will depends on the number of block that was compressed. The bigger the size of the
+# file the greater the number of samples. This is why the application "normalize" the number of block that is compressed
+# to a number of sample that is not greater than 64K. Otherwise the CPU processing time to create the smoothing can
+# grow exponentially.
+
    array V[N_sum]
    numSample = 1
    
@@ -212,32 +250,48 @@ do for [i=1:ARGC-1] {
          }
       }
    }
+   distSample[i] = numSample
    
+# Now create the distribution using array V and store it into $Data
+
    set table $Data separator comma
    set samples numSample - 1
    n = 0
    plot for[i = 1:1] '+' u(n = n + 1) :(V[n]) w table
    unset table
-   
-   stats $Data name "D" nooutput
+ 
 
-#preliminary linear formula for Banwdith value. Wanted: 10 -> 4095, 2 -> 512
+# From an Electrical Engineering terminology the kernel density function is the transfer resampling function of a normal 
+# distribution (also a low pass filter). Thus, the second column of the Gnuplot smooth density table is the output of the 
+# filtering of the samples done by convoluting the input samples with the low pass transfer resampling function. The 
+# bandwidth value create the "spreading" shape of the normal distribution transfer function that will determine how much 
+# samples contribute to the resampling value and thus the smoothing (or low pass bandwidth cutoff). The Bandwidth value 
+# has been computed with "try and check" and provide a good "smoothing" with 10 -> block size of 4096 and 2 -> block size
+# of 512. For now the bandwidth required for a block size will use an linear extrapolation algorithm.
+#
+# https://aakinshin.net/posts/kde-bw/
+#
+# Linear formula for Banwdith value. Wanted: 10 -> 4095, 2 -> 512
 # y = slope*(x) + origin -> origin = y - slope*(x)
-# bandwidth is y
+# Bandwidth is y
 
    slope = (10.0 - 2.0)/(4096.0 - 512)
    origin = 10 - slope*4096
    chunkBandwidth = slope*chunkSize + origin
 
+# Resampling using Kernel Density Estimation of the distribution $Data and output into $kdensity table.
+
    set table $kdensity
    set samples(numSample - 1)
    plot $Data using 2:(1) smooth kdensity bandwidth chunkBandwidth
    unset table
-     
+    
    set datafile separator whitespace
 
-   statfile(i) = sprintf("statfile_%d.txt", i)
+# This provide a mean to put into a file the result of the Kernel Density Estimation smoothering for debugging
+# purpose
 
+   statfile(i) = sprintf("statfile_%d.txt", i)
    set table statfile(i)
    plot $kdensity using 1:2
    unset table
@@ -247,6 +301,7 @@ do for [i=1:ARGC-1] {
    if(chunkSize == maxBlockSize) {
     maxBlock_max_y = STATS_max_y
    }
+
    max_y[i] = STATS_max_y 
    boxsize[i] = max_y[i] * 0.03
 
