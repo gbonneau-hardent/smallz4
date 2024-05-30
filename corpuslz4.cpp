@@ -56,6 +56,8 @@ size_t compBytesFromIn(void* data, size_t numBytes, void* userPtr)
       LZ4CompReader* lz4Reader = (LZ4CompReader*)userPtr;
       uint64_t remainToRead = lz4Reader->dataChunkSize - lz4Reader->dataReadSize;
       uint64_t numToTread = remainToRead >= numBytes ? numBytes : remainToRead;
+
+      lz4Reader->notFilled = false;
       if (numToTread == 0) {
          return 0;
       }
@@ -91,8 +93,79 @@ size_t compBytesFromIn(void* data, size_t numBytes, void* userPtr)
          lz4Reader->lastMBytes = lz4Reader->totalMBytes;
          std::cout << " \rMBytes Read = " << lz4Reader->totalMBytes;
       }
+      lz4Reader->notFilled = false;
       lz4Reader->loopCount++;
       return numToTread;
+   }
+   return 0;
+}
+
+
+size_t compBytesFromIn_new(void* data, size_t numBytes, void* userPtr)
+{
+   char* lz4Buffer = (char*)data;
+
+   if (data && numBytes > 0) {
+      LZ4CompReader* lz4Reader = (LZ4CompReader*)userPtr;
+      uint64_t remainToRead = lz4Reader->dataChunkSize - lz4Reader->filledSize;
+      uint64_t numToTread = remainToRead >= numBytes ? numBytes : remainToRead;
+      if (numToTread == 0) {
+         return 0;
+      }
+      if (lz4Reader->srcSize == 0) {
+         lz4Reader->dataEof = true;
+         return 0;
+      }
+      try {
+         char * origBuffer = lz4Reader->fileBuffer.get();
+         origBuffer += lz4Reader->filledSize;
+         data = (char*)data + lz4Reader->filledSize;
+
+         if (numToTread > lz4Reader->srcSize) {
+            lz4Reader->srcFile->read((char*)data, lz4Reader->srcSize);
+            memset((char*)(data)+lz4Reader->srcSize, 0, numToTread - lz4Reader->srcSize);
+            memcpy(origBuffer, data, lz4Reader->srcSize);
+            memset(origBuffer + lz4Reader->srcSize, 0, numToTread - lz4Reader->srcSize);
+
+            lz4Reader->filledSize += lz4Reader->srcSize;
+            lz4Reader->srcSize = 0;
+            lz4Reader->notFilled = true;
+
+            char* cmpBuffer = lz4Reader->fileBuffer.get();
+            for (uint32_t i = 0; i < lz4Reader->filledSize; i++) {
+               if (lz4Buffer[i] != cmpBuffer[i]) {
+                  std::cout << "";
+               }
+            }
+            return 0;
+         }
+         else {
+            lz4Reader->srcFile->read((char*)data, numToTread);
+            memcpy(lz4Reader->fileBuffer.get(), data, numToTread);
+            lz4Reader->filledSize += numToTread;
+            lz4Reader->srcSize -= numToTread;
+         }
+      }
+      catch (std::system_error& e) {
+         if (lz4Reader->srcFile->eof()) {
+            lz4Reader->dataEof = true;
+            return 0;
+         }
+         std::cerr << e.code().message() << std::endl;
+         exit(-4);
+      }
+      lz4Reader->dataReadSize += lz4Reader->filledSize;
+      lz4Reader->totalMBytes = lz4Reader->totalSizeRead >> 20;
+
+      if (lz4Reader->lastMBytes != lz4Reader->totalMBytes) {
+         lz4Reader->lastMBytes = lz4Reader->totalMBytes;
+         std::cout << " \rMBytes Read = " << lz4Reader->totalMBytes;
+      }
+      size_t sizeRead = lz4Reader->filledSize;
+      lz4Reader->loopCount++;
+      lz4Reader->notFilled = false;
+
+      return sizeRead;
    }
    return 0;
 }
@@ -325,6 +398,10 @@ int32_t CorpusLZ4::InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Rea
          std::cerr << e.code().message() << std::endl;
          exit(-1);
       }
+      // WARNING: The C Run time sublayer cannot open more than 8192 files simultaneously at the low level.
+
+      _setmaxstdio(8192);
+      uint32_t numFile = 0;
 
       while (true) {
          srcPathFileName.clear();
@@ -342,6 +419,10 @@ int32_t CorpusLZ4::InitCompression(ContextLZ4& lz4Context, LZ4CompReader& lz4Rea
          corpusFile->exceptions(std::ifstream::failbit | std::ifstream::badbit | std::ifstream::eofbit);
          lz4Reader.corpusList.push_back(corpusFile);
 
+         if (numFile++ > 8100) {
+            std::cout << "Number of files greater than maximum allowed by the C Run Time" << std::endl;
+            exit(-4);
+         }
          try {
             corpusFile->open(srcPathFileName.c_str(), std::ios::in | std::ios::binary);
          }
@@ -420,15 +501,17 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
    lz4Reader.dataCompressSize = 0;
    lz4Reader.dataReadSize = 0;
 
-   smallz4::lz4(contextLZ4.lz4Factory, compBytesFromIn, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
+   smallz4::lz4(contextLZ4.lz4Factory, compBytesFromIn_new, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
 
-   if (lz4Reader.dataEof) {
+   if (lz4Reader.dataEof || lz4Reader.notFilled) {
       return 0;
    }
    if (lz4Reader.dataReadSize != contextLZ4.chunkSize[chunckIndex]) {
       std::cout << "Exiting with error lz4Reader.dataReadSize != dataChunk[chunckIndex]" << std::endl;
       exit(-1);
    }
+   lz4Reader.filledSize = 0;
+   lz4Reader.notFilled = true;
 
    double ratio = 0.0;
    double ratioNewLZ4 = 0.0;
@@ -1024,7 +1107,7 @@ int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
                }
             }
             corpusLZ4.Compress(contextLZ4, lz4Reader, chunckIndex);
-            if (lz4Reader.dataEof) {
+            if (lz4Reader.dataEof || lz4Reader.notFilled) {
                break;
             }
             lz4DecompReader.available  = lz4Reader.dataCompressSize;

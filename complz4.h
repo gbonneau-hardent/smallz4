@@ -41,8 +41,10 @@ struct LZ4CompReader
    uint64_t compThreshold = 0;
    uint64_t chunkSize = 0;
    uint64_t srcSize = 0;
+   uint64_t filledSize = 0;
    uint32_t maxCompSize = 0;
    bool     dataEof = false;
+   bool     notFilled = true;
 
    std::string corpusName = "";
    std::map<uint32_t, uint32_t> compStatistic;
@@ -124,6 +126,7 @@ private:
    //  ----- one and only variable ... -----
 
    /// how many matches are checked in findLongestMatch, lower values yield faster encoding at the cost of worse compression ratio
+   static unsigned char buffer[BufferSize];
    unsigned short maxChainLength;
    const std::shared_ptr<LZ4Factory>& lz4Factory;
 

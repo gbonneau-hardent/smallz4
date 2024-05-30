@@ -35,6 +35,8 @@
 
 #include "complz4.h"
 
+unsigned char smallz4::buffer[smallz4::BufferSize];
+
 const char* const smallz4::getVersion()
 {
    return "1.5";
@@ -424,8 +426,6 @@ void smallz4::lz4(const std::shared_ptr<LZ4Factory>& lz4Factory, COMP_GET_BYTES 
      }
 
      // ==================== declarations ====================
-     // change read buffer size as you like
-     unsigned char buffer[BufferSize];
 
      // read the file in chunks/blocks, data will contain only bytes which are relevant for the current block
      std::vector<unsigned char> data;
