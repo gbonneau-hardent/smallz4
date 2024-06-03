@@ -44,6 +44,7 @@ typedef struct ContextLZ4
    std::ofstream statFileNewL4;
    std::ofstream dumpFileNewL4;
 
+   std::shared_ptr<LZ4Factory> lz4Factory;
    COMP_SEARCH_MATCH matchEngine;
 
 } ContextLZ4;

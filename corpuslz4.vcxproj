@@ -41,11 +41,13 @@
     <ClInclude Include="DPIWrapper.h" />
     <ClInclude Include="HWMatchEngine.h" />
     <ClInclude Include="matchlz4.h" />
+    <ClInclude Include="RambusLZ4.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="violon_3_no_log_session.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="plotviolin.gp" />
     <None Include="violon_multiscale_no_log_session.gp" />
     <None Include="violon_no_log_session.gp" />
   </ItemGroup>

@@ -46,9 +46,9 @@ uint8_t LZ4Sequence::getToken() const
    return token;
 }
 
-SmallLZ4 SmallLZ4::setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken)
+std::shared_ptr<LZ4Sequence> SmallLZ4Factory::setSequence(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken)
 {
-   return SmallLZ4(litLength, matchLength, matchOffset, data, lastToken);
+   return std::make_shared<SmallLZ4>(litLength, matchLength, matchOffset, data, lastToken);
 }
 
 SmallLZ4::SmallLZ4(uint64_t litLength, uint64_t matchLength, uint64_t matchOffset, const unsigned char* data, bool lastToken)
@@ -122,7 +122,7 @@ SmallLZ4::SmallLZ4(uint64_t litLength, uint64_t matchLength, uint64_t matchOffse
 
 uint64_t sequenceCall = 0;
 
-SmallLZ4 SmallLZ4::getSequence(const unsigned char* in_data, uint64_t blockSize)
+std::shared_ptr<LZ4Sequence> SmallLZ4Factory::getSequence(const unsigned char* in_data, uint64_t blockSize)
 {
    sequenceCall++;
    if (sequenceCall == 2329964) {
@@ -158,7 +158,7 @@ SmallLZ4 SmallLZ4::getSequence(const unsigned char* in_data, uint64_t blockSize)
    // last token has only literals
    if (blockOffset >= blockSize) {
       if (blockOffset == blockSize) {
-         return SmallLZ4(numLiterals, 0, 0, literalData, true);
+         return std::make_shared<SmallLZ4>(numLiterals, 0, 0, literalData, true);
       }
       assert(false);
    }
@@ -183,6 +183,6 @@ SmallLZ4 SmallLZ4::getSequence(const unsigned char* in_data, uint64_t blockSize)
       } while (current == 255);
    }
    // uint32_t litLength, uint32_t matchLength, uint32_t matchOffset, const unsigned char* data, bool lastToken
-   return SmallLZ4(numLiterals, matchLength - MinMatchLength, matchOffset, literalData, false);
+   return std::make_shared<SmallLZ4>(numLiterals, matchLength - LZ4Sequence::MinMatchLength, matchOffset, literalData, false);
 }
 #pragma optimize( "", on )

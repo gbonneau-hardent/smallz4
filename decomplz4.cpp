@@ -70,7 +70,7 @@ void unlz4error(const char* msg)
 // ==================== LZ4 DECOMPRESSOR ====================
 
 /// decompress everything in input stream (accessed via getByte) and write to output stream (via sendBytes)
-void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr)
+void unlz4_userPtr(const std::shared_ptr<LZ4Factory> & lz4Factory, DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const char* dictionary, void* userPtr)
 {
    // signature
    // 
@@ -163,18 +163,17 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
          {
             //uint64_t origBlockOffset = blockOffset;
 
-            LZ4Sequence lz4Sequence = SmallLZ4::getSequence((const uint8_t *)(decompReader->compBuffer), blockSize - blockOffset);
+            std::shared_ptr<LZ4Sequence> lz4Sequence = lz4Factory->getSequence((const uint8_t *)(decompReader->compBuffer), blockSize - blockOffset);
 
-            uint64_t seqSize = lz4Sequence.getSeqData().size();
-            uint64_t distance = lz4Sequence.getMatchOffset();
-            uint64_t numLiterals = lz4Sequence.getLiteralLength();
-            uint64_t matchLength = lz4Sequence.getMatchLength();
+            uint64_t seqSize = lz4Sequence->getSeqData().size();
+            uint64_t distance = lz4Sequence->getMatchOffset();
+            uint64_t numLiterals = lz4Sequence->getLiteralLength();
+            uint64_t matchLength = lz4Sequence->getMatchLength();
+            const uint8_t* literalData = lz4Sequence->getLiteralData();
 
             // copy all those literals
             if (pos + numLiterals < HISTORY_SIZE)
             {
-               const uint8_t * literalData = lz4Sequence.getLiteralData();
-               // fast loop
                while (numLiterals-- > 0) {
                   unsigned char oneLiteral = *literalData++;
                   history[pos++] = oneLiteral;
@@ -185,7 +184,7 @@ void unlz4_userPtr(DECOMP_GET_BYTE getByte, DECOMP_SEND_BYTES sendBytes, const c
             }
 
             // last token has only literals
-            if (lz4Sequence.isLastToken()) {
+            if (lz4Sequence->isLastToken()) {
                decompReader->compBuffer += seqSize;
                decompReader->available -= seqSize;
                break;
