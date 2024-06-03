@@ -67,7 +67,7 @@ void match_cell_model::compareDataHisoty()
         {
         if (verbose) printf("(%d==%d)", data[pos], history[NB_BYTE - 1 + pos - offset].history);
         if (verbose) printf(".%d", history[NB_BYTE - 1 + pos - offset].valid);
-        if ((data[pos] == history[NB_BYTE - 1 + pos - offset].history) && (history[NB_BYTE - 1 + pos - offset].valid) && !((pos == NB_BYTE - 1) && (last_data == 1)))
+        if ((data[pos] == history[NB_BYTE - 1 + pos - offset].history) && (history[NB_BYTE - 1 + pos - offset].valid) && !((pos == NB_BYTE) && (last_data == 1)))
             comparator[offset][pos] = 1;
         else
             comparator[offset][pos] = 0;
