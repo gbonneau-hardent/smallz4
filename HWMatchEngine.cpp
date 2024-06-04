@@ -399,6 +399,165 @@ Matchstruct* match_detection_model::getMatchListStartPos()
     return matchList_startpos;
 }
 
+
+void match_processing_chain_model::init(uint64_t blockSize_in)
+{
+    for (int ii = 0; ii < CHUNKSIZE; ii++)
+    {
+        matchList[ii].valid = 0;
+        matchList[ii].length = 0;
+        matchList[ii].offset = 0;
+        matchList[ii].large_counter = 0;
+
+        cc_marked[ii] = 0;
+        ii_is_better_than_iip1[ii] = 0;
+    }
+
+    blockSize = blockSize_in;
+}
+
+void match_processing_chain_model::loadMatchList(Matchstruct* matchList_ptr)
+{
+    for (int ii = 0; ii < CHUNKSIZE; ii++)
+    {
+        matchList[ii] = matchList_ptr[ii]; // Copy list
+    }
+}
+
+void match_processing_chain_model::smalllz4ComplianceFiltering()
+{
+
+    Matchstruct matchList_tmp[CHUNKSIZE];
+
+    for (int pos = 0; pos < CHUNKSIZE; pos++) {
+
+        matchList_tmp[pos].valid = 0;
+        matchList_tmp[pos].length = 0;
+        matchList_tmp[pos].offset = 0;
+
+        if (matchList[pos].valid) {
+            //printf("-----  MATCH: pos:%d offset:%d length:%d\n", matchList[pos].pos, matchList[pos].offset, matchList[pos].length);
+            if ((pos + matchList[pos].length) < int(blockSize)) {
+
+                if ((pos + matchList[pos].length) <= int(blockSize - 6)) {
+                    matchList_tmp[pos].offset = matchList[pos].offset;
+                    matchList_tmp[pos].length = matchList[pos].length;
+                    matchList_tmp[pos].valid = 1;
+                }
+                else { // This will be removed eventualy
+                    matchList_tmp[pos].offset = matchList[pos].offset;
+                    matchList_tmp[pos].length = (blockSize - 5 - pos);
+                    matchList_tmp[pos].valid = 1;
+                    if (matchList_tmp[pos].length == 0) 
+                    {
+                        matchList_tmp[pos].offset = 0;
+                        matchList_tmp[pos].valid = 0;
+                    }
+                }
+
+            }
+        }
+    }
+
+    for (int pos = 0; pos < CHUNKSIZE; pos++)
+    {
+            matchList[pos] = matchList_tmp[pos]; // Update list
+    }
+
+}
+
+void match_processing_chain_model::extend()
+{
+    // 1ST STEP
+    // Extend the matches till a bigger one is found
+    for (unsigned int ii = 0; ii < CHUNKSIZE - 1; ii++) {
+        if (matchList[ii].length > 1)
+        {
+            if (matchList[ii].length - 1 >= matchList[ii + 1].length)
+            {
+                matchList[ii + 1].length = matchList[ii].length - 1;
+                matchList[ii + 1].offset = matchList[ii].offset;
+                matchList[ii + 1].valid = 1;
+            }
+        }
+    }
+}
+
+void match_processing_chain_model::ccBtn()
+{
+    // 2ND STEP
+    // Look for 4 consecutive non-zero distances
+    for (unsigned int ii = 0; ii < CHUNKSIZE - 3; ii++) {
+        cc_marked[ii] = ((matchList[ii].offset == matchList[ii + 1].offset) && (matchList[ii].offset == matchList[ii + 2].offset) && (matchList[ii].offset == matchList[ii + 3].offset) && (matchList[ii].offset != 0));
+    }
+    // Precompute (matches[ii].length + 2 >= matches[ii + 1].length)
+    for (unsigned int ii = 0; ii < CHUNKSIZE - 1; ii++) {
+        ii_is_better_than_iip1[ii] = (matchList[ii].length + 2 >= matchList[ii + 1].length);  // + 1 is also corrrect (need to run the complete Silicia corpus test to see if it is higher than 1.83)
+    }
+}
+
+void match_processing_chain_model::extendBest()
+{
+    // 3RD STEP
+    // WHen a match starts with a CC mark, it go till the end overwritting the other match (even those starting with CC mark)
+    // Otherwise extend only the best matches (if ii+1 is better, then nothing to be done because it is already extended)
+    for (unsigned int ii = 0; ii < CHUNKSIZE - 1; ii++) {
+        if ((cc_marked[ii]) && (matchList[ii].length > 1))
+        {
+            matchList[ii + 1].length = matchList[ii].length - 1;
+            matchList[ii + 1].offset = matchList[ii].offset;
+            cc_marked[ii + 1] = 1;
+        }
+        else
+        {
+            if ((matchList[ii].length > 1) && (ii_is_better_than_iip1[ii]))
+            {
+                matchList[ii + 1].length = matchList[ii].length - 1;
+                matchList[ii + 1].offset = matchList[ii].offset;
+            }
+        }
+    }
+}
+
+void match_processing_chain_model::recomputeMatchLength()
+{
+    // FINAL STEP
+    // Recompute the length
+    int length_cnt = 0;
+    for (unsigned int ii = CHUNKSIZE - 1; ii > 1; ii--) {
+        if (matchList[ii].offset == matchList[ii - 1].offset)
+        {
+            length_cnt++;
+            if (matchList[ii - 1].offset > 0)
+            {
+                matchList[ii - 1].length = length_cnt;
+                matchList[ii].length = 0;
+                matchList[ii].offset = 0;
+            }
+        }
+        else
+        {
+            if (matchList[ii - 1].offset == 0)
+            {
+                matchList[ii - 1].length = 0;
+                length_cnt = 1;
+            }
+            else
+            {
+                matchList[ii - 1].length = 1;
+                length_cnt = 1;
+            }
+        }
+    }
+}
+
+Matchstruct* match_processing_chain_model::getMatchList()
+{
+    return matchList;
+}
+
+
+
 void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock)
 {
    std::cout << "Using HW Cmodel to Compress" << std::endl;
@@ -428,117 +587,25 @@ void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, c
       match_detection.processCycle();
    }
 
+   // Match Processing Chain Model
+   match_processing_chain_model match_processing_chain;
+   match_processing_chain.init(blockSize);
+   match_processing_chain.loadMatchList(match_detection.getMatchListStartPos());
+   match_processing_chain.smalllz4ComplianceFiltering();
+   match_processing_chain.extend();
+   match_processing_chain.ccBtn();
+   match_processing_chain.extendBest();
+   match_processing_chain.recomputeMatchLength();
 
+   Matchstruct* matchList;
+   matchList = match_processing_chain.getMatchList();
 
    // CONVERT HW matches to SMALL_LZ4 matches
-   Matchstruct* matchList;
-
-   matchList = match_detection.getMatchListStartPos();
    for (int pos = 0; pos < CHUNKSIZE; pos++) {
-
        if (matchList[pos].valid) {
-           //printf("-----  MATCH: pos:%d offset:%d length:%d\n", matchList[pos].pos, matchList[pos].offset, matchList[pos].length);
-           if ((pos + matchList[pos].length) < int(blockSize)) {
-
-               if ( (pos + matchList[pos].length) <= int(blockSize - 6)) {
-                   matches[pos].distance = matchList[pos].offset + 1;
-                   matches[pos].length = matchList[pos].length;
-               }
-               else { // This will be removed eventualy
-                   matches[pos].distance = matchList[pos].offset + 1;
-                   matches[pos].length = (blockSize - 5 - pos);
-                   if (matches[pos].length == 0)
-                       matches[pos].distance = 0;
-               }
-
-           }
-       }
-   }
-
-   for (unsigned int ii = 0; ii < matches.size(); ii++) {
-      //printf("MATCH_NEW:\t%d\tD:\t%d\tL:\t%d\n", ii, matches[ii].distance, matches[ii].length);
-   }
-
-
-
-   // 1ST STEP
-   // Extend the matches till a bigger one is found
-   if (matches.size() > 0) { // Security
-       for (unsigned int ii = 0; ii < matches.size() - 1; ii++) {
-           if (matches[ii].length > 1)
-           {
-               if (matches[ii].length - 1 >= matches[ii + 1].length)
-               {
-                   matches[ii + 1].length = matches[ii].length - 1;
-                   matches[ii + 1].distance = matches[ii].distance;
-               }
-           }
-       }
-   }
-
-   // 2ND STEP
-   // Look for 4 consecutive non-zero distances
-   bool cc_marked[CHUNKSIZE];
-    for (unsigned int ii = 0; ii < matches.size()-3; ii++) {
-       cc_marked[ii] = ((matches[ii].distance == matches[ii + 1].distance) && (matches[ii].distance == matches[ii + 2].distance) && (matches[ii].distance == matches[ii + 3].distance) && (matches[ii].distance != 0));
-   }
-   // Precompute (matches[ii].length + 2 >= matches[ii + 1].length)
-   bool ii_is_better_than_iip1[CHUNKSIZE];
-   for (unsigned int ii = 0; ii < matches.size()-1; ii++) {
-       ii_is_better_than_iip1[ii] = (matches[ii].length + 2 >= matches[ii + 1].length);  // + 1 is also corrrect (need to run the complete Silicia corpus test to see if it is higher than 1.83)
-   }
-
-
-
-   // 3RD STEP
-   // WHen a match starts with a CC mark, it go till the end overwritting the other match (even those starting with CC mark)
-   // Otherwise extend only the best matches (if ii+1 is better, then nothing to be done because it is already extended)
-   for (unsigned int ii = 0; ii < matches.size()-1; ii++) {
-       if ((cc_marked[ii]) && (matches[ii].length > 1))
-       {
-            matches[ii + 1].length = matches[ii].length - 1;
-            matches[ii + 1].distance = matches[ii].distance;
-            cc_marked[ii + 1] = 1;
-       }
-       else
-       {
-           if ((matches[ii].length > 1) && (ii_is_better_than_iip1[ii]) )
-           {
-               matches[ii + 1].length = matches[ii].length - 1;
-               matches[ii + 1].distance = matches[ii].distance;
-           }
-       }
-   }
-
-   // FINAL STEP
-   // Recompute the length
-   int length_cnt = 0;
-
-   if (matches.size() > 1) { // Security
-       for (unsigned int ii = matches.size() - 1; ii > 1; ii--) {
-           if (matches[ii].distance == matches[ii - 1].distance)
-           {
-               length_cnt++;
-               if (matches[ii - 1].distance > 0)
-               {
-                   matches[ii - 1].length = length_cnt;
-                   matches[ii].length = 0;
-                   matches[ii].distance = 0;
-               }
-           }
-           else
-           {
-               if (matches[ii - 1].distance == 0)
-               {
-                   matches[ii - 1].length = 0;
-                   length_cnt = 1;
-               }
-               else
-               {
-                   matches[ii - 1].length = 1;
-                   length_cnt = 1;
-               }
-           }
+           //printf("-----  MATCH: pos:%d offset:%d length:%d\n", pos, matchList[pos].offset, matchList[pos].length);
+           matches[pos].distance = matchList[pos].offset + 1;
+           matches[pos].length = matchList[pos].length;
        }
    }
 

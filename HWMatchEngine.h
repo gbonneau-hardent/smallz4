@@ -103,4 +103,47 @@ private:
 };
 
 
+class match_processing_chain_model : public std::enable_shared_from_this<match_processing_chain_model>
+{
+public:
+
+    std::shared_ptr<match_processing_chain_model> AddSelfReference()
+    {
+        if (selfReference == nullptr) {
+            auto dpiCallReference = shared_from_this();
+            selfReference = std::dynamic_pointer_cast<match_processing_chain_model>(dpiCallReference);
+        }
+        return selfReference;
+    }
+
+    void RemoveSelfReference() {
+
+        selfReference = nullptr;
+    }
+
+    ~match_processing_chain_model() {
+
+    }
+     
+    void init(uint64_t);
+    void smalllz4ComplianceFiltering();
+    void extend();
+    void ccBtn();
+    void extendBest();
+    void recomputeMatchLength();
+
+    void loadMatchList(Matchstruct*);
+    Matchstruct* getMatchList();
+    Matchstruct matchList[CHUNKSIZE];
+
+    bool cc_marked[CHUNKSIZE];
+    bool ii_is_better_than_iip1[CHUNKSIZE];
+    uint64_t blockSize;
+
+private:
+    std::shared_ptr<match_processing_chain_model> selfReference;
+
+};
+
+
 void hw_model_compress(std::vector<Match>& matches, const uint64_t& blockSize, const unsigned char* dataBlock);
