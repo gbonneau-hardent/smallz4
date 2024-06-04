@@ -37,23 +37,20 @@
 
 unsigned char smallz4::buffer[smallz4::BufferSize];
 
+
 const char* const smallz4::getVersion()
 {
-   return "1.5";
+   return "Rambus 1.5";
 };
 
 
 /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-void smallz4::lz4(const std::shared_ptr<LZ4Factory> & lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
+void smallz4::lz4(const std::shared_ptr<LZ4Factory> & lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, uint16_t maxChainLength, unsigned short maxDistance, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal)
 {
-   smallz4 obj(lz4Factory, maxChainLength);
+   smallz4 obj(lz4Factory, maxChainLength, maxDistance);
    obj.compress(getBytes, sendBytes, matchAlgorithm, dictionary, useLegacyFormat, userPtr, isLess64Illegal);
 };
 
-void smallz4::lz4(const std::shared_ptr<LZ4Factory>& lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength, bool useLegacyFormat, void* userPtr)
-{
-   lz4(lz4Factory, getBytes, sendBytes, matchAlgorithm, maxChainLength, std::vector<unsigned char>(), useLegacyFormat, userPtr);
-};
 
   /// find longest match of data[pos] between data[begin] and data[end], use match chain
   Match smallz4::findLongestMatch(const unsigned char* const data, uint64_t pos, uint64_t begin, uint64_t end, const Distance* const chain) const

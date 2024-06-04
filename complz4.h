@@ -101,11 +101,11 @@ private:
       BufferSize = 64 * 1024,
 
       /// maximum match distance, must be power of 2 minus 1
-      MaxDistance = 65535,
+      DefMaxDistance = 65535,
       /// marker for "no match"
       EndOfChain = 0,
       /// stop match finding after MaxChainLength steps (default is unlimited => optimal parsing)
-      MaxChainLength = MaxDistance,
+      MaxChainLength = DefMaxDistance,
 
       /// significantly speed up parsing if the same byte is repeated a lot, may cause sub-optimal compression
       MaxSameLetter = 19 + 255 * 256, // was: 19 + 255,
@@ -127,6 +127,7 @@ private:
 
    /// how many matches are checked in findLongestMatch, lower values yield faster encoding at the cost of worse compression ratio
    static unsigned char buffer[BufferSize];
+   uint32_t MaxDistance = DefMaxDistance;
    unsigned short maxChainLength;
    const std::shared_ptr<LZ4Factory>& lz4Factory;
 
@@ -134,9 +135,10 @@ private:
 
 
    /// create new compressor (only invoked by lz4)
-   explicit smallz4(const std::shared_ptr<LZ4Factory>& in_lz4Factory, unsigned short newMaxChainLength = MaxChainLength)
-      : lz4Factory(in_lz4Factory)
-      , maxChainLength(newMaxChainLength) // => no limit, but can be changed by setMaxChainLength
+   explicit smallz4(const std::shared_ptr<LZ4Factory>& in_lz4Factory, uint16_t newMaxChainLength = MaxChainLength, uint16_t newMaxDistance = DefMaxDistance)
+       : lz4Factory(in_lz4Factory)
+       , maxChainLength(newMaxChainLength) // => no limit, but can be changed by setMaxChainLength
+       , MaxDistance(newMaxDistance)
    {
    };
 
@@ -161,15 +163,13 @@ private:
    /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
    static void lz4(const std::shared_ptr<LZ4Factory>& lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm,
       unsigned short maxChainLength,
+      unsigned short maxDistance,
       const std::vector<unsigned char>& dictionary, // predefined dictionary
       bool useLegacyFormat = false,                 // old format is 7 bytes smaller if input < 8 MB
       void* userPtr = NULL,
       bool isLess64Illegal = false);
  
 private:
-
-   /// compress everything in input stream (accessed via getByte) and write to output stream (via send)
-   static void lz4(const std::shared_ptr<LZ4Factory>& lz4Factory, COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, unsigned short maxChainLength = MaxChainLength, bool useLegacyFormat = false, void* userPtr = NULL);
 
    void compress(COMP_GET_BYTES getBytes, COMP_SEND_BYTES sendBytes, COMP_SEARCH_MATCH matchAlgorithm, const std::vector<unsigned char>& dictionary, bool useLegacyFormat, void* userPtr, bool isLess64Illegal);
 

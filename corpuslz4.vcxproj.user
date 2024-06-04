@@ -5,7 +5,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-c 4096 -g -b 0.9 -x 524288 -s .\data\github_data_36_time_1601285197.txt</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-c 32768 -w 4095 -g -b 0.9 -x 65536 -s .\data\github_data_36_time_1601285197.txt</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

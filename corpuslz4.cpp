@@ -501,7 +501,7 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
    lz4Reader.dataCompressSize = 0;
    lz4Reader.dataReadSize = 0;
 
-   smallz4::lz4(contextLZ4.lz4Factory, compBytesFromIn_new, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
+   smallz4::lz4(contextLZ4.lz4Factory, compBytesFromIn_new, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
 
    if (lz4Reader.dataEof || lz4Reader.notFilled) {
       return 0;
@@ -511,7 +511,6 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
       exit(-1);
    }
    lz4Reader.filledSize = 0;
-   lz4Reader.notFilled = true;
 
    double ratio = 0.0;
    double ratioNewLZ4 = 0.0;
@@ -1113,6 +1112,7 @@ int32_t simulation(CorpusLZ4 & corpusLZ4, ContextLZ4 & contextLZ4)
             lz4DecompReader.available  = lz4Reader.dataCompressSize;
             lz4DecompReader.compBuffer = lz4Reader.compBuffer.get();
             lz4DecompReader.decompPos  = 0;
+            lz4Reader.notFilled        = true;
 
             corpusLZ4.Decompress(contextLZ4, lz4DecompReader, chunckIndex);
             int retCmp = std::memcmp(lz4Reader.fileBuffer.get(), lz4DecompReader.decompBuffer.get(), contextLZ4.chunkSize[chunckIndex]);
