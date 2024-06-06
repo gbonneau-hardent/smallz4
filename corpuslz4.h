@@ -26,6 +26,7 @@ typedef struct ContextLZ4
    bool     isDumpLength;
    bool     isDumpComp;
    bool     isStatGnuplot;
+   bool     isConcatenate;
 
    std::string corpusSet;
    std::string fileName;

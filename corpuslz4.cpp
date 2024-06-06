@@ -101,7 +101,7 @@ size_t compBytesFromIn(void* data, size_t numBytes, void* userPtr)
 }
 
 
-size_t compBytesFromIn_new(void* data, size_t numBytes, void* userPtr)
+size_t compBytesFromInConcatenate (void* data, size_t numBytes, void* userPtr)
 {
    char* lz4Buffer = (char*)data;
 
@@ -141,7 +141,7 @@ size_t compBytesFromIn_new(void* data, size_t numBytes, void* userPtr)
          }
          else {
             lz4Reader->srcFile->read((char*)data, numToTread);
-            memcpy(lz4Reader->fileBuffer.get(), data, numToTread);
+            memcpy(origBuffer, data, numToTread);
             lz4Reader->filledSize += numToTread;
             lz4Reader->srcSize -= numToTread;
          }
@@ -264,6 +264,7 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
       ("l,length", "Create histogram of search match length", cxxopts::value<bool>()->default_value("false"))
       ("h,histogram", "Create histogram of compression chunk size", cxxopts::value<bool>()->default_value("false"))
       ("g,gnuplot", "Friendly statistic for Gnuplot", cxxopts::value<bool>()->default_value("true"))
+      ("n,concatenate", "Concatenate files from corpus as a single processing file", cxxopts::value<bool>()->default_value("false"))
       ("j,jsonl", "Input Data formatted as JSON Lines", cxxopts::value<bool>()->default_value("false"))
       ;
 
@@ -283,6 +284,7 @@ int32_t CorpusLZ4::ParseOption(int argc, const char* argv[], ContextLZ4 & contex
       contextLZ4.isDumpLength  = result["l"].as<bool>();
       contextLZ4.isDumpComp    = result["h"].as<bool>();
       contextLZ4.isStatGnuplot = result["g"].as<bool>();
+      contextLZ4.isConcatenate = result["n"].as<bool>();
    }
    catch (const cxxopts::exceptions::exception& ex)
    {
@@ -501,7 +503,7 @@ int32_t CorpusLZ4::Compress(ContextLZ4& contextLZ4, LZ4CompReader& lz4Reader, ui
    lz4Reader.dataCompressSize = 0;
    lz4Reader.dataReadSize = 0;
 
-   smallz4::lz4(contextLZ4.lz4Factory, compBytesFromIn_new, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
+   smallz4::lz4(contextLZ4.lz4Factory, contextLZ4.isConcatenate ? compBytesFromInConcatenate : compBytesFromIn, compBytesToOut, contextLZ4.matchEngine, contextLZ4.windowSize, contextLZ4.windowSize, dictionary, useLegacy, &lz4Reader);
 
    if (lz4Reader.dataEof || lz4Reader.notFilled) {
       return 0;

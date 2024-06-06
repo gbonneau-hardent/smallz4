@@ -10,6 +10,7 @@ isPosTop = 1
 isYorigTop = 1
 isCurve  = 0
 isUseMaxSample = 0
+isDebug = 1
 
 
 if(isPngTerm) {
@@ -20,15 +21,15 @@ if(GPVAL_TERM eq 'qt') {
     set term qt size 1010,1000
     isQT = 1
 
-    corpusTitle = "Silesia Corpus"
+    corpusTitle = "Github Corpus"
 
-    ARGC = 9
+    ARGC = 2
     
     corpusTitle = "Random Corpus"
     
     if(ARGC != 2) {
 
-	    ARG1 = 'C:\Users\gbonneau\git\smallz4\github_stat
+	    ARG1 = 'E:\git\smallz4'
         #ARG1 = 'C:\Users\gbonneau\git\smallz4'
 
         #ARG6 = "lz4_canterbury_corpus.txt_4096.csv"
@@ -37,8 +38,8 @@ if(GPVAL_TERM eq 'qt') {
         #ARG3 = "lz4_enwik9.txt_4096.csv"
         #ARG2 = "lz4_random.txt_4096.csv"
 
-        ARG2 = "Github_16_MB_4096.csv"
-        ARG3 = "Github_32_MB_4096.csv"
+        ARG2 = "github_2GB_b_32K_w_4K.csv"
+        ARG3 = "github_2GB_b_32K.csv"
         ARG4 = "Github_64_MB_4096.csv"
         ARG5 = "Github_128_MB_4096.csv"
         ARG6 = "Github_256_MB_4096.csv"
@@ -53,12 +54,12 @@ if(GPVAL_TERM eq 'qt') {
     
     if(ARGC == 2) {
 
-	   ARG1 = 'C:\Users\gbonneau\git\smallz4'
+	   ARG1 = 'E:\git\smallz4'
 
        #ARG2 = "lz4_silicia_corpus.txt_4096.csv" 
        #ARG2 = "lz4_github_corpus.txt_4096_data_20_3GB.csv"
 	   #ARG2 = "lz4_github_corpus.txt_4096_data_20_240MB.csv"
-	   ARG2 = "lz4_github_data_36_time_1601285197.txt_1024.csv"
+	   ARG2 = "github_128MB_4K.csv"
     }
     print "Termninal QT"
 }
@@ -71,7 +72,7 @@ else {
     if(ARGC != 2) {
         ARGC = 2
         ARG1 = 'C:\Users\gbonneau\git\smallz4'
-        ARG2 = "lz4_silicia_corpus.txt_4096.csv"
+        ARG2 = "github_2GB_b_32K.csv"
     }
     set output ARG2.sprintf(".png")
     print "Terminal PNG"
@@ -92,6 +93,7 @@ cd ARG1
 
 ymax = 0
 maxBlockSize = 0
+maxBlock_max_y = 0
 maxSample = 0
 bias = 0
 
@@ -101,10 +103,10 @@ format = bias == 0 ? format : format . "\n".fmt
 
 # Harcoded for now
 
-xpos = 10
-if(ARGC != 2) {
-    set xrange[0:]
-}
+xpos = 0
+#if(ARGC != 2) {
+#    set xrange[0:]
+#}
 
 array arrBlockSize[ARGC-1]
 array infostat[ARGC-1]
@@ -114,7 +116,7 @@ array boxsize[ARGC-1]
 array compMeanRatio[ARGC-1]
 array violinPos[ARGC-1]
 array meanPos[ARGC-1]
-array yscale[ARGC-1]
+array xscale[ARGC-1]
 array medianValue[ARGC-1]
 array lowQuartileValue[ARGC-1]
 array upQuartileValue[ARGC-1]
@@ -250,7 +252,6 @@ do for [i=1:ARGC-1] {
          }
       }
    }
-   distSample[i] = numSample
    
 # Now create the distribution using array V and store it into $Data
 
@@ -288,7 +289,7 @@ do for [i=1:ARGC-1] {
     
    set datafile separator whitespace
 
-# This provide a mean to put into a file the result of the Kernel Density Estimation smoothering for debugging
+# This provide a mean to put into a file the result of the Kernel Density Estimation smoothering for plotting
 # purpose
 
    statfile(i) = sprintf("statfile_%d.txt", i)
@@ -296,16 +297,17 @@ do for [i=1:ARGC-1] {
    plot $kdensity using 1:2
    unset table
 
-   stats [*:*][*:*] $kdensity nooutput
-   
-   if(chunkSize == maxBlockSize) {
-    maxBlock_max_y = STATS_max_y
-   }
+# Use the statistic to find the maximum filtered resampling value from the smooth operation. This will provide
+# the maximum filtered sample for each file and will be use to adjust and position the plot for each file.
 
+   stats [*:*][*:*] $kdensity nooutput  
    max_y[i] = STATS_max_y 
-   boxsize[i] = max_y[i] * 0.03
+   boxsize[i] = max_y[i] * 0.03   
+   maxBlock_max_y = maxBlock_max_y < STATS_max_y ? STATS_max_y : maxBlock_max_y
 
-   if((ARGC-1) < 3) {
+   if(isDebug) { print "chunkSize = ", chunkSize, ", STATS_max_y = ", STATS_max_y, ", maxBlock_max_y = ", maxBlock_max_y }
+
+   if((ARGC-1) < 2) {
 
       infostat[i] = sprintf(format, "Mean", compMeanRatio[i], "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
       infostat[i] = bias == 0 ? infostat[i] : sprintf(format, "Mean", compMeanRatio[i], "Mean (Bias)", compBiasMeanRatio, "Low Variance", compVarianceLow, "High Variance", compVarianceHigh, "Median", ratioMedian, "First Quartile", ratioLowQuartile, "Third Quartile", ratioUpQuartile)
@@ -345,39 +347,56 @@ do for[i=1:ARGC-1] {
         meanPos[i] = int(arrBlockSize[i]/compMeanRatio[i])
     }
 }
+# Compute the space allocated between each violon plot. This is chosen to be 20% of the maximum width of
+# the violon plot having maximum width.
+
+xspace = maxBlock_max_y * 0.10
+xpos = xspace
 
 do for[i=1:ARGC-1] {
-    yscale[i] = maxBlock_max_y / max_y[i]
-    xpos = xpos + maxBlock_max_y
-    xposArr[i] = xpos
-    xpos = xpos + maxBlock_max_y + 10
 
-    if((ARGC-1) > 2) {
-        set object 11+i*2 circle at first xposArr[i],meanPos[i] radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
-    }
+# A violon plot uses the smoothered values from the resampling function and use a negative and positive relative horizontal vector 
+# having the length of the smoothered value from an absolute position on the x axis. A scaling value for the vector is computed
+# to normalize the violon plot of each statistic file to provide a better visual plotting comparison. An absolute (xpos) position
+# of the violon plot is computed for each statistic file and some spacing is added to distance each violon plot from each other
 
-    if(isYorigTop) {
-       ypos = ymax
-       yoff = -1
-       if(isInfoTop) {
-           ypos = violinPos[i]+posMin[i]
-           yoff = 3
-       }
-    }
-    else {
-       ypos = 0
-       yoff = -1    
-    }
-    set label 11+i*2+1 sprintf("%s", corpusNames[i])."\nBlock Size = ".sprintf("%d", arrBlockSize[i])."\nAvg Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], ypos center font 'Arial,10' front offset character 0,yoff noenhanced
-#   print sprintf("%s", corpusNames[i])."\nBlock Size = ".sprintf("%d", arrBlockSize[i])."\nAvg Ratio = ".sprintf("%2.2f", compMeanRatio[i]).", xporArr[i] = ".sprintf("%d", xporArr[i]).", ypos = ".sprintf("%d", ypos)
+   xscale[i] = maxBlock_max_y / max_y[i]
+   xpos = xpos + maxBlock_max_y
+   xposArr[i] = xpos
+   xpos = xpos + maxBlock_max_y + xspace
+
+   if((ARGC-1) >= 2) {
+      set object 11+i*2 circle at first xposArr[i],meanPos[i] radius char 0.5 fillcolor rgb 'black' fillstyle solid border lt -1 lw 2 front
+   }
+
+   if(isYorigTop) {
+      ypos = ymax
+      yoff = -1
+      if(isInfoTop) {
+         ypos = violinPos[i]+posMin[i]
+         yoff = 3
+      }
+   }
+   else {
+      ypos = 0
+      yoff = -1    
+   }
+   set label 11+i*2+1 sprintf("%s", corpusNames[i])."\nBlock Size = ".sprintf("%d", arrBlockSize[i])."\nAvg Ratio = ".sprintf("%2.2f", compMeanRatio[i]) at xposArr[i], ypos center font 'Arial,10' front offset character 0,yoff noenhanced
+   if(isDebug) { print sprintf("%s", corpusNames[i])."\nBlock Size = ".sprintf("%d", arrBlockSize[i])."\nAvg Ratio = ".sprintf("%2.2f", compMeanRatio[i]).", xposArr[i] = ".sprintf("%d", xposArr[i]).", ypos = ".sprintf("%d", ypos) }
 }
+xposMax = xpos
+set xrange[0:xposMax]
 
-if((ARGC-1) > 2) {
+if(isDebug) { print "maxBlock_max_y is ", maxBlock_max_y }
+if(isDebug) { print "xposArr is ", xposArr }
+if(isDebug) { print "xscale is ", xscale }
 
-    set table $Curve
-    set samples ARGC-1
-    plot sample [n=1:ARGC-1] '+' using (xposArr[n]):(meanPos[n])
-    unset table
+if((ARGC-1) >= 2) {
+
+   set table $Curve
+   set samples ARGC-1
+   plot sample [n=1:ARGC-1] '+' using (xposArr[n]):(meanPos[n])
+   unset table
 }
 
 set border 3
@@ -407,7 +426,7 @@ else {
   set yrange[0:ymax]
 }
 
-if((ARGC-1) < 3) {
+if((ARGC-1) < 2) {
    i=1
    set boxwidth boxsize[i]/2 
    set object 20+i*2 rect from -(boxsize[i]/2)+xposArr[i], violinPos[i]+lowQuartileValue[i] to (boxsize[i]/2)+xposArr[i], violinPos[i]+upQuartileValue[i] fc lt -1 lw 2 front
@@ -416,16 +435,16 @@ if((ARGC-1) < 3) {
    set arrow 40+i*2 from xposArr[i]-boxsize[i]/2,violinPos[i]+medianValue[i] to xposArr[i]+boxsize[i]/2,violinPos[i]+medianValue[i] nohead lt -1 lw 2 front
 }
 
-if((ARGC-1) > 2) {
+if((ARGC-1) >= 2) {
    if(isCurve) {
-      plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, \
+      plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*xscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*xscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, \
       $Curve smooth csplines lt -1 lw 2
    }
    else {
-      plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z
+      plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*xscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*xscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z
    }
 }
 else {
-   plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*yscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, \
+   plot for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):($2*xscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, for[j=1:ARGC-1] statfile(j) using (xposArr[j]):($1+violinPos[j]):(-$2*xscale[j]):(0):($1/arrBlockSize[j]) with vectors nohead lc palette z, \
    for[j=1:ARGC-1] '+' every ::::0 using (xposArr[j]):(violinPos[j]+lowQuartileValue[j]):(violinPos[j]+posMin[j]):(violinPos[j]+posMax[j]):(violinPos[j]+upQuartileValue[j]) with candlesticks fs solid lt 1 lw 2 notitle whiskerbars
 }
